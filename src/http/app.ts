@@ -27,7 +27,7 @@ export function createApp() {
   app.addHook('onRequest', async (request, reply) => {
     request.startTime = process.hrtime.bigint();
 
-    if (!request.url.startsWith('/health/')) {
+    if (!request.url.startsWith('/health')) {
       request.log.info(
         { request_id: request.requestId, method: request.method, path: request.url },
         'incoming request',
@@ -40,7 +40,7 @@ export function createApp() {
   });
 
   app.addHook('onResponse', (request, reply, done) => {
-    if (request.url.startsWith('/health/')) {
+    if (request.url.startsWith('/health')) {
       done();
       return;
     }

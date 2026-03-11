@@ -1,0 +1,36 @@
+id: user_identities
+entity_name: user_identities
+owning_service: measured-judgement
+persistence_object: measured_judgement.user_identities
+tenant_scope: service-global
+mutability: append_only
+primary_key: [id]
+foreign_keys:
+  - columns: [user_id]
+    references: measured_judgement.users(id)
+    on_delete: CASCADE
+unique_constraints:
+  - [provider, external_subject]
+fields:
+  - name: id
+    type: integer
+    nullable: false
+  - name: user_id
+    type: integer
+    nullable: false
+  - name: provider
+    type: text
+    nullable: false
+  - name: external_subject
+    type: text
+    nullable: false
+  - name: created_at
+    type: timestamptz
+    nullable: false
+  - name: revoked_at
+    type: timestamptz
+    nullable: true
+    notes: >
+      Null means the identity mapping is active. Set to a timestamp to
+      revoke the mapping without deleting the row. Identity resolution
+      filters WHERE revoked_at IS NULL.

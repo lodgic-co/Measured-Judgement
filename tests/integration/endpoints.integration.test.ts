@@ -10,6 +10,8 @@ const USER1_UUID = '22222222-2222-2222-2222-222222222222';
 const USER2_UUID = '33333333-3333-3333-3333-333333333333';
 const OUTSIDER_UUID = '66666666-6666-6666-6666-666666666666';
 const AUTHORITY_INSTANCE_ID = 'authority-main';
+const PROP1_UUID = '44444444-4444-4444-4444-444444444444';
+const UNREGISTERED_PROP_UUID = 'ffffffff-ffff-ffff-ffff-ffffffffffff';
 
 let app: FastifyInstance;
 let request: supertest.SuperTest<supertest.Test>;
@@ -125,6 +127,18 @@ async function seedTestData(): Promise<void> {
     VALUES ($1, $2)
     ON CONFLICT (organisation_uuid) DO UPDATE SET authority_instance_id = EXCLUDED.authority_instance_id
   `, [ORG_UUID, AUTHORITY_INSTANCE_ID]);
+
+  await testPool.query(`
+    INSERT INTO measured_judgement.role_permissions (role_id, permission_key)
+    VALUES ($1, 'property.configure')
+    ON CONFLICT (role_id, permission_key) DO NOTHING
+  `, [roleId]);
+
+  await testPool.query(`
+    INSERT INTO measured_judgement.property_authority_assignments (property_uuid, authority_instance_id)
+    VALUES ($1, $2)
+    ON CONFLICT (property_uuid) DO UPDATE SET authority_instance_id = EXCLUDED.authority_instance_id
+  `, [PROP1_UUID, AUTHORITY_INSTANCE_ID]);
 }
 
 function expectEnvelope(body: unknown, expectedStatus: number, expectedCode: string): void {
@@ -410,6 +424,85 @@ describe('measured-judgement endpoint integration tests', () => {
         });
       expect(res.status).toBe(200);
       expect(res.body.allowed).toBe(false);
+    });
+
+    it('returns 400 scope_mismatch when org-scoped permission is sent with property_uuids', async () => {
+      const res = await request
+        .post('/permissions/check')
+        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('X-Actor-User-Uuid', USER1_UUID)
+        .set('X-Actor-Type', 'user')
+        .send({
+          actor_user_uuid: USER1_UUID,
+          organisation_uuid: ORG_UUID,
+          permission_key: 'organisation.properties.read',
+          property_uuids: [PROP1_UUID],
+        });
+      expect(res.status).toBe(400);
+      expectEnvelope(res.body, 400, 'scope_mismatch');
+    });
+
+    it('returns 400 scope_mismatch when property-scoped permission is sent without property_uuids', async () => {
+      const res = await request
+        .post('/permissions/check')
+        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('X-Actor-User-Uuid', USER1_UUID)
+        .set('X-Actor-Type', 'user')
+        .send({
+          actor_user_uuid: USER1_UUID,
+          organisation_uuid: ORG_UUID,
+          permission_key: 'property.configure',
+        });
+      expect(res.status).toBe(400);
+      expectEnvelope(res.body, 400, 'scope_mismatch');
+    });
+
+    it('returns 200 allowed:true for property-scoped permission when user has all_properties scope', async () => {
+      const res = await request
+        .post('/permissions/check')
+        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('X-Actor-User-Uuid', USER1_UUID)
+        .set('X-Actor-Type', 'user')
+        .send({
+          actor_user_uuid: USER1_UUID,
+          organisation_uuid: ORG_UUID,
+          permission_key: 'property.configure',
+          property_uuids: [PROP1_UUID],
+        });
+      expect(res.status).toBe(200);
+      expect(res.body.allowed).toBe(true);
+    });
+
+    it('returns 200 allowed:false for property-scoped permission when user is member but lacks the permission', async () => {
+      const res = await request
+        .post('/permissions/check')
+        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('X-Actor-User-Uuid', USER2_UUID)
+        .set('X-Actor-Type', 'user')
+        .send({
+          actor_user_uuid: USER2_UUID,
+          organisation_uuid: ORG_UUID,
+          permission_key: 'property.configure',
+          property_uuids: [PROP1_UUID],
+        });
+      expect(res.status).toBe(200);
+      expect(res.body.allowed).toBe(false);
+    });
+
+    it('returns 400 invalid_property when property_uuid is not registered in routing directory', async () => {
+      const res = await request
+        .post('/permissions/check')
+        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('X-Actor-User-Uuid', USER1_UUID)
+        .set('X-Actor-Type', 'user')
+        .send({
+          actor_user_uuid: USER1_UUID,
+          organisation_uuid: ORG_UUID,
+          permission_key: 'property.configure',
+          property_uuids: [UNREGISTERED_PROP_UUID],
+        });
+      expect(res.status).toBe(400);
+      expectEnvelope(res.body, 400, 'invalid_property');
     });
   });
 

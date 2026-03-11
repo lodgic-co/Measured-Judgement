@@ -20,6 +20,8 @@ declare module 'fastify' {
     errorCode: string | undefined;
     actorUserUuid: string | undefined;
     organisationUuid: string | undefined;
+    permissionKey: string | undefined;
+    permissionOutcome: boolean | undefined;
     startTime: bigint;
     requestId: string;
   }

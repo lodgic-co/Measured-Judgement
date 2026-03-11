@@ -1,0 +1,64 @@
+procedure_name: EvaluatePermissionCoverage
+procedure_kind: domain
+identifier_mode: internal_only
+owning_service: measured-judgement
+purpose: >
+  Evaluate whether a user_organisation holds the required permission for a
+  given permission key. Returns { allowed: boolean } without throwing.
+  Callers that need enforcement (i.e. terminating the flow on denial) must
+  use CheckPermission.
+
+  Handles both organisation-scoped and property-scoped permissions:
+  - Organisation-scoped: any role assignment granting the key is sufficient.
+  - Property-scoped (all_properties): any all_properties-scope assignment
+    granting the key covers all properties.
+  - Property-scoped (property_set): all requested property_uuids must be
+    covered by at least one granting assignment's property list.
+source_files:
+  - src/domain/procedures.ts
+caller_context: >
+  Called by CheckPermission after membership has been asserted and the
+  user_organisation_id has been resolved. Not exposed as a direct HTTP endpoint.
+inputs:
+  - userOrganisationId (integer — internal FK to user_organisations.id)
+  - permissionKey (string — must be a key in the permission catalogue)
+  - propertyUuids (string UUID array, optional — required for property-scoped
+    permissions, forbidden for organisation-scoped permissions)
+outputs:
+  - allowed (boolean)
+preconditions:
+  - userOrganisationId must refer to a valid user_organisations row (resolved
+    upstream by AssertOrganisationMembership).
+  - permissionKey must exist in the permission catalogue.
+  - Scope rules must be satisfied: organisation-scoped permissions must omit
+    propertyUuids; property-scoped permissions must include non-empty propertyUuids.
+decision_logic:
+  - Look up the permission in the catalogue; throw UnknownPermission if absent.
+  - Validate scope vs propertyUuids; throw ScopeMismatch on mismatch.
+  - Query role_assignments JOIN role_permissions WHERE user_organisation_id = $1
+    AND permission_key = $2.
+  - If no rows, return { allowed: false }.
+  - For organisation-scoped permission: any matching row grants access;
+    return { allowed: true }.
+  - For property-scoped permission: if any granting assignment has scope
+    all_properties, return { allowed: true }.
+  - Otherwise: query role_assignment_properties for covered property_uuids;
+    return { allowed: all requested uuids are covered }.
+  - On unexpected error: return { allowed: false } (fail-closed).
+error_behaviour:
+  - unknown_permission (400): permissionKey not in catalogue.
+  - scope_mismatch (400): propertyUuids present for org-scoped, or absent for
+    property-scoped permissions.
+  - Returns { allowed: false } on unexpected DB errors (fail-closed).
+scoping_constraints:
+  - Operates entirely within the measured_judgement schema.
+  - Must not perform UUID translation; inputs must already be resolved.
+  - Must not throw NotFound or BadGateway — those are caller responsibilities.
+data_dependencies:
+  - measured_judgement.role_assignments (user_organisation_id, role_id, scope)
+  - measured_judgement.role_permissions (role_id, permission_key)
+  - measured_judgement.role_assignment_properties (role_assignment_id, property_uuid)
+side_effects: none
+default_outcome: >
+  Returns { allowed: true } when coverage is granted; { allowed: false }
+  otherwise including on unexpected errors (fail-closed).

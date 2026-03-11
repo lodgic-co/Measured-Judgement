@@ -1,0 +1,40 @@
+id: role_assignments
+entity_name: role_assignments
+owning_service: measured-judgement
+persistence_object: measured_judgement.role_assignments
+tenant_scope: organisation
+mutability: mutable
+primary_key: [id]
+foreign_keys:
+  - columns: [role_id]
+    references: measured_judgement.roles(id)
+    on_delete: CASCADE
+  - columns: [user_organisation_id]
+    references: measured_judgement.user_organisations(id)
+    on_delete: CASCADE
+unique_constraints:
+  - [role_id, scope, user_organisation_id]
+fields:
+  - name: id
+    type: integer
+    nullable: false
+  - name: role_id
+    type: integer
+    nullable: false
+  - name: scope
+    type: text
+    nullable: false
+    notes: >
+      Permitted values: all_properties | property_set. all_properties grants
+      permission coverage across all properties in the organisation.
+      property_set restricts coverage to the property_uuids listed in
+      role_assignment_properties for this assignment.
+  - name: user_organisation_id
+    type: integer
+    nullable: false
+  - name: created_at
+    type: timestamptz
+    nullable: false
+  - name: updated_at
+    type: timestamptz
+    nullable: false

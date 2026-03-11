@@ -23,6 +23,7 @@ export async function permissionsRoutes(app: FastifyInstance): Promise<void> {
     const { actor_user_uuid, organisation_uuid, permission_key, property_uuids } = result.data;
     request.actorUserUuid = actor_user_uuid;
     request.organisationUuid = organisation_uuid;
+    request.permissionKey = permission_key;
 
     const outcome = await CheckPermission(
       pool,
@@ -31,6 +32,8 @@ export async function permissionsRoutes(app: FastifyInstance): Promise<void> {
       permission_key,
       property_uuids,
     );
+
+    request.permissionOutcome = outcome.allowed;
 
     return reply.code(200).send(outcome);
   });

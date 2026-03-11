@@ -1,0 +1,36 @@
+id: role_assignment_properties
+entity_name: role_assignment_properties
+owning_service: measured-judgement
+persistence_object: measured_judgement.role_assignment_properties
+tenant_scope: organisation
+mutability: append_only
+primary_key: [property_uuid, role_assignment_id]
+foreign_keys:
+  - columns: [role_assignment_id]
+    references: measured_judgement.role_assignments(id)
+    on_delete: CASCADE
+unique_constraints:
+  - [property_uuid, role_assignment_id]
+cross_service_references:
+  - column: property_uuid
+    references_service: considered-response
+    references_entity: properties
+    reference_mode: uuid_fk
+    notes: >
+      No database-level FK. Cross-service reference enforced by application
+      semantics. property_uuid is validated against
+      property_authority_assignments when used in permission checks.
+fields:
+  - name: property_uuid
+    type: uuid
+    nullable: false
+  - name: role_assignment_id
+    type: integer
+    nullable: false
+  - name: created_at
+    type: timestamptz
+    nullable: false
+notes: >
+  Only populated for role_assignments with scope = property_set. For
+  all_properties scope, this table is not consulted during permission
+  evaluation.

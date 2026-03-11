@@ -1,0 +1,44 @@
+id: property_authority_assignments
+entity_name: property_authority_assignments
+owning_service: measured-judgement
+persistence_object: measured_judgement.property_authority_assignments
+tenant_scope: service-global
+mutability: mutable
+primary_key: [id]
+foreign_keys:
+  - columns: [authority_instance_id]
+    references: measured_judgement.authority_instances(id)
+unique_constraints:
+  - [property_uuid]
+cross_service_references:
+  - column: property_uuid
+    references_service: considered-response
+    references_entity: properties
+    reference_mode: uuid_fk
+    notes: >
+      No database-level FK. Cross-service reference by UUID. Each property
+      is assigned to at most one authority_instance_id. Also used as the
+      routing directory validation source for property-scoped permission
+      checks (property_uuids are validated against this table before
+      permission evaluation proceeds).
+fields:
+  - name: id
+    type: integer
+    nullable: false
+  - name: property_uuid
+    type: uuid
+    nullable: false
+  - name: authority_instance_id
+    type: text
+    nullable: false
+  - name: created_at
+    type: timestamptz
+    nullable: false
+  - name: updated_at
+    type: timestamptz
+    nullable: false
+notes: >
+  Slice 1: data model and table exist; property routing endpoints are not
+  yet exposed (deferred to a future slice). The table is currently used
+  only to validate that property_uuids in permission check requests are
+  known to the routing directory.

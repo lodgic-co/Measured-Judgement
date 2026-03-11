@@ -67,6 +67,12 @@ export function createApp() {
     if (request.organisationUuid) {
       log.organisation_uuid = request.organisationUuid;
     }
+    if (request.permissionKey !== undefined) {
+      log.permission_key = request.permissionKey;
+    }
+    if (request.permissionOutcome !== undefined) {
+      log.permission_outcome = request.permissionOutcome;
+    }
     request.log.info(log, 'request completed');
     done();
   });

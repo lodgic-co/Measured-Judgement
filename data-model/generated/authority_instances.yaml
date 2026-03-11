@@ -1,0 +1,29 @@
+id: authority_instances
+entity_name: authority_instances
+owning_service: measured-judgement
+persistence_object: measured_judgement.authority_instances
+tenant_scope: service-global
+mutability: mutable
+primary_key: [id]
+foreign_keys: []
+unique_constraints: []
+fields:
+  - name: id
+    type: text
+    nullable: false
+    notes: >
+      Named string identifier for the deployment instance (e.g.
+      "authority-main", "authority-eu"). Not an integer surrogate key.
+      Chosen to be stable and human-readable across routing configuration.
+  - name: base_url
+    type: text
+    nullable: false
+    notes: >
+      The base URL of the deployment target. Used by polite-intervention
+      to construct downstream request URLs for organisation-scoped calls.
+  - name: created_at
+    type: timestamptz
+    nullable: false
+  - name: updated_at
+    type: timestamptz
+    nullable: false

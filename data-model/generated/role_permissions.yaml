@@ -1,0 +1,29 @@
+id: role_permissions
+entity_name: role_permissions
+owning_service: measured-judgement
+persistence_object: measured_judgement.role_permissions
+tenant_scope: organisation
+mutability: append_only
+primary_key: [id]
+foreign_keys:
+  - columns: [role_id]
+    references: measured_judgement.roles(id)
+    on_delete: CASCADE
+unique_constraints:
+  - [role_id, permission_key]
+fields:
+  - name: id
+    type: integer
+    nullable: false
+  - name: permission_key
+    type: text
+    nullable: false
+    notes: >
+      Must be a key in the platform permission catalogue
+      (measured_judgement/src/domain/permissions.ts).
+  - name: role_id
+    type: integer
+    nullable: false
+  - name: created_at
+    type: timestamptz
+    nullable: false

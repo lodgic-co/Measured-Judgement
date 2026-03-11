@@ -1,0 +1,42 @@
+id: organisation_authority_assignments
+entity_name: organisation_authority_assignments
+owning_service: measured-judgement
+persistence_object: measured_judgement.organisation_authority_assignments
+tenant_scope: service-global
+mutability: mutable
+primary_key: [id]
+foreign_keys:
+  - columns: [authority_instance_id]
+    references: measured_judgement.authority_instances(id)
+unique_constraints:
+  - [organisation_uuid]
+cross_service_references:
+  - column: organisation_uuid
+    references_service: considered-response
+    references_entity: organisations
+    reference_mode: uuid_fk
+    notes: >
+      No database-level FK. Cross-service reference by UUID. Each
+      organisation is assigned to exactly one authority_instance_id.
+      This is the routing directory entry for organisation-scoped calls.
+fields:
+  - name: id
+    type: integer
+    nullable: false
+  - name: organisation_uuid
+    type: uuid
+    nullable: false
+  - name: authority_instance_id
+    type: text
+    nullable: false
+  - name: created_at
+    type: timestamptz
+    nullable: false
+  - name: updated_at
+    type: timestamptz
+    nullable: false
+notes: >
+  One row per organisation. The UNIQUE constraint on organisation_uuid
+  enforces that each organisation maps to exactly one authority instance.
+  polite-intervention reads this table via the GET /routing/authority-instance
+  endpoint to resolve organisation-scoped downstream targets.

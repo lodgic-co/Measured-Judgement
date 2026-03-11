@@ -1,0 +1,45 @@
+procedure_name: AssertOrganisationMembership
+procedure_kind: domain
+identifier_mode: boundary_resolving
+owning_service: measured-judgement
+purpose: >
+  Assert that the actor is a member of the specified organisation by verifying
+  a user_organisations row exists. Returns the internal user_organisation_id
+  for use in downstream permission evaluation. Throws NotFound for any failure
+  mode to preserve non-leakage semantics.
+source_files:
+  - src/domain/procedures.ts
+caller_context: >
+  Called by CheckPermission as the membership step before evaluating
+  permission coverage. Not exposed directly as an HTTP endpoint.
+inputs:
+  - organisationUuid (string UUID — from request body, validated upstream)
+  - actorUserUuid (string UUID — from request body or delegated actor context)
+outputs:
+  - user_organisation_id (integer — internal FK for role assignment queries)
+preconditions:
+  - actorUserUuid and organisationUuid must be syntactically valid UUIDs.
+decision_logic:
+  - Look up measured_judgement.users WHERE uuid = actorUserUuid.
+  - If no user found, throw NotFound (non-leakage: absence of user is
+    indistinguishable from absence of membership).
+  - Look up measured_judgement.user_organisations WHERE organisation_uuid =
+    organisationUuid AND user_id = resolved user id.
+  - If no membership found, throw NotFound (non-leakage).
+  - Return { user_organisation_id }.
+error_behaviour:
+  - not_found (404): user not found, or membership not found. Both cases
+    surface identically — non-leakage semantics.
+scoping_constraints:
+  - Operates entirely within the measured_judgement schema.
+  - Used only as an internal step within CheckPermission; not called directly
+    from HTTP route handlers.
+data_dependencies:
+  - measured_judgement.users (uuid, id)
+  - measured_judgement.user_organisations (organisation_uuid, user_id, id)
+side_effects: none
+non_leakage:
+  - User not found and membership not found are externally indistinguishable.
+default_outcome: >
+  Returns { user_organisation_id } on success. Throws not_found (404) for
+  any failure mode.

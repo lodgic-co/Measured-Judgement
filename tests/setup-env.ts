@@ -1,0 +1,17 @@
+process.env['INTERNAL_SERVICE_SECRET'] = process.env['INTERNAL_SERVICE_SECRET'] ?? 'test-internal-secret';
+process.env['AUTH0_DOMAIN'] = 'test.auth0.com';
+process.env['AUTH0_ISSUER'] = 'https://test.auth0.com/';
+process.env['AUTH0_AUDIENCE'] = 'https://internal.test.example.com/';
+process.env['AUTH0_ALLOWED_AZP'] = 'test-m2m-client';
+process.env['AUTH0_JWKS_URI'] = 'http://127.0.0.1:19999/.well-known/jwks.json';
+process.env['LOG_LEVEL'] = 'silent';
+process.env['OTEL_EXPORTER_OTLP_ENDPOINT'] = '';
+process.env['OTEL_SERVICE_NAME'] = 'measured-judgement-test';
+process.env['SYSTEM_DEFAULT_LANGUAGE'] = process.env['SYSTEM_DEFAULT_LANGUAGE'] ?? 'en';
+process.env['SYSTEM_DEFAULT_LOCALE'] = process.env['SYSTEM_DEFAULT_LOCALE'] ?? 'en-AU';
+process.env['SYSTEM_DEFAULT_TIMEZONE'] = process.env['SYSTEM_DEFAULT_TIMEZONE'] ?? 'UTC';
+process.env['DATABASE_URL'] = process.env['DATABASE_URL'] ?? 'postgres://lodgic:lodgic@localhost:5432/measured_judgement?sslmode=disable';
+process.env['DB_SCHEMA'] = 'measured_judgement';
+process.env['DB_POOL_SIZE'] = '2';
+process.env['DB_CONNECTION_TIMEOUT_MS'] = '3000';
+process.env['DB_IDLE_TIMEOUT_MS'] = '5000';

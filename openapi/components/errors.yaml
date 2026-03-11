@@ -1,0 +1,101 @@
+components:
+  schemas:
+    ErrorObject:
+      type: object
+      required:
+        - status
+        - code
+        - message
+        - request_id
+        - retryable
+      properties:
+        status:
+          type: integer
+          description: HTTP status code
+          example: 400
+        code:
+          type: string
+          description: Machine-readable error code
+          example: invalid_request
+        message:
+          type: string
+          description: Human-readable error description
+          example: "provider is required"
+        message_params:
+          type: object
+          additionalProperties: true
+          description: Optional structured parameters for the error message
+        request_id:
+          type: string
+          format: uuid
+          description: Correlation ID for the request
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        retryable:
+          type: boolean
+          description: Whether the client should retry the request
+          example: false
+
+    ErrorEnvelope:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorObject"
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters or body
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              status: 400
+              code: invalid_request
+              message: "provider is required"
+              request_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              retryable: false
+
+    Unauthenticated:
+      description: Missing or invalid service token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              status: 401
+              code: unauthenticated
+              message: "Authorization header required"
+              request_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              retryable: false
+
+    NotFound:
+      description: Resource not found (or access denied to protect existence)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              status: 404
+              code: not_found
+              message: "Not found"
+              request_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              retryable: false
+
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              status: 500
+              code: internal_error
+              message: "Internal server error"
+              request_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              retryable: true

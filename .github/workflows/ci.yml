@@ -16,6 +16,7 @@ jobs:
           POSTGRES_USER: ci
           POSTGRES_PASSWORD: ci
           POSTGRES_DB: measured_judgement_test
+          PG_SSL: "false"
         ports:
           - 5432:5432
         options: >-

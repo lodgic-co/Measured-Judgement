@@ -1,6 +1,6 @@
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { config } from '../config/index.js';
+import { config, allowedAzpList } from '../config/index.js';
 import { Unauthenticated } from '../errors/index.js';
 
 const ALLOWED_ALGORITHMS = ['RS256'] as const;
@@ -51,8 +51,8 @@ export async function verifyServiceToken(
       throw Unauthenticated('Token missing azp claim');
     }
 
-    if (payload.azp !== config.AUTH0_ALLOWED_AZP) {
-      request.log.warn({ azp: payload.azp }, 'Token azp mismatch');
+    if (!allowedAzpList.includes(payload.azp as string)) {
+      request.log.warn({ azp: payload.azp }, 'Token azp not in allowed list');
       throw Unauthenticated('Unauthorized client');
     }
 

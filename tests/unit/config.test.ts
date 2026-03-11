@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import envSchema from 'env-schema';
-import { configSchema } from '../../src/config/index.js';
+import { configSchema, parseAllowedAzp } from '../../src/config/index.js';
 
 const REQUIRED_DB_VARS = ['DB_SCHEMA', 'DB_POOL_SIZE', 'DB_CONNECTION_TIMEOUT_MS', 'DB_IDLE_TIMEOUT_MS'] as const;
 
@@ -54,6 +54,32 @@ describe('config validation - Auth0', () => {
     data['AUTH0_ISSUER_BASE_URL'] = 'https://legacy.auth0.com/';
     data['JWKS_URL'] = 'http://legacy:15113/.well-known/jwks.json';
     expect(() => parseConfig(data)).not.toThrow();
+  });
+});
+
+describe('parseAllowedAzp', () => {
+  it('parses a single value', () => {
+    expect(parseAllowedAzp('client-a')).toEqual(['client-a']);
+  });
+
+  it('parses a comma-separated list', () => {
+    expect(parseAllowedAzp('client-a,client-b,client-c')).toEqual(['client-a', 'client-b', 'client-c']);
+  });
+
+  it('trims whitespace around each value', () => {
+    expect(parseAllowedAzp(' client-a , client-b , client-c ')).toEqual(['client-a', 'client-b', 'client-c']);
+  });
+
+  it('rejects empty entries between commas', () => {
+    expect(parseAllowedAzp('client-a,,client-b')).toEqual(['client-a', 'client-b']);
+  });
+
+  it('returns empty array for an empty string', () => {
+    expect(parseAllowedAzp('')).toEqual([]);
+  });
+
+  it('returns empty array for a whitespace-only string', () => {
+    expect(parseAllowedAzp('   ')).toEqual([]);
   });
 });
 

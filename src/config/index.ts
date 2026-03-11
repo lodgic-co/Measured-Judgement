@@ -70,6 +70,17 @@ export interface AppConfig {
   OTEL_SERVICE_NAME: string;
 }
 
+/**
+ * Parses a comma-separated AZP allowlist string into a trimmed, non-empty
+ * string array. Exported for unit testing.
+ */
+export function parseAllowedAzp(value: string): string[] {
+  return value
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
 interface RawConfig {
   AUTH0_ISSUER?: string;
   AUTH0_ISSUER_BASE_URL?: string;
@@ -114,6 +125,14 @@ export const config: AppConfig = {
   AUTH0_ISSUER: resolvedIssuer,
   AUTH0_JWKS_URI: resolvedJwksUri,
 };
+
+export const allowedAzpList: readonly string[] = (() => {
+  const list = parseAllowedAzp(config.AUTH0_ALLOWED_AZP);
+  if (list.length === 0) {
+    throw new Error('AUTH0_ALLOWED_AZP must contain at least one non-empty client ID');
+  }
+  return list;
+})();
 
 export function emitDeprecationWarnings(log: { warn: (msg: string) => void }): void {
   for (const msg of deprecationWarnings) {

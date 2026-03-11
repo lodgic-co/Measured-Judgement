@@ -16,7 +16,6 @@ jobs:
           POSTGRES_USER: ci
           POSTGRES_PASSWORD: ci
           POSTGRES_DB: measured_judgement_test
-          PG_SSL: "false"
         ports:
           - 5432:5432
         options: >-
@@ -44,6 +43,8 @@ jobs:
       LOG_LEVEL: silent
       OTEL_EXPORTER_OTLP_ENDPOINT: ""
       NODE_ENV: test
+      PG_SSL: "false"
+
 
     steps:
       - uses: actions/checkout@v6

@@ -1,0 +1,45 @@
+procedure_name: ResolveUserLocaleContext
+procedure_kind: domain
+identifier_mode: internal_only
+owning_service: measured-judgement
+purpose: >
+  Resolve the locale context (language, locale, timezone) for a known platform
+  user. Returns user-specified preferences where set, falling back to system
+  defaults where preferences are null.
+source_files:
+  - src/domain/procedures.ts
+  - src/routes/users.ts
+caller_context: >
+  Called by the GET /users/me/preferences route handler after the delegated
+  actor context has been validated. The actorUserUuid is taken from the
+  X-Actor-User-Uuid header. polite-intervention calls this to retrieve locale
+  context for user-scoped responses.
+inputs:
+  - actorUserUuid (string UUID — the actor's internal platform identifier,
+    validated upstream as a valid UUID format)
+outputs:
+  - resolved_language (string — user preference or system default)
+  - resolved_locale (string — user preference or system default)
+  - resolved_timezone (string — user preference or system default)
+preconditions:
+  - actorUserUuid must be a valid UUID format (enforced at the HTTP boundary
+    before this procedure is called).
+decision_logic:
+  - Query measured_judgement.users WHERE uuid = $1.
+  - If no row found, throw NotFound.
+  - Return resolved values: preferred_language ?? SYSTEM_DEFAULT_LANGUAGE,
+    preferred_locale ?? SYSTEM_DEFAULT_LOCALE,
+    preferred_timezone ?? SYSTEM_DEFAULT_TIMEZONE.
+error_behaviour:
+  - not_found (404): no user found for the given actorUserUuid.
+scoping_constraints:
+  - Operates on the measured_judgement schema. No cross-service DB access.
+  - actorUserUuid must have been resolved by ResolveUserIdentity before this
+    procedure is called.
+data_dependencies:
+  - measured_judgement.users (uuid, preferred_language, preferred_locale,
+    preferred_timezone)
+side_effects: none
+default_outcome: >
+  Returns locale context tuple with user preferences or system defaults.
+  Returns not_found (404) for unknown actorUserUuid.

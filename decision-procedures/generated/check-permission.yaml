@@ -1,0 +1,72 @@
+procedure_name: CheckPermission
+procedure_kind: domain
+identifier_mode: boundary_resolving
+owning_service: measured-judgement
+purpose: >
+  Full permission evaluation entry point called by domain services
+  (e.g. considered-response) via POST /permissions/check. Composes
+  membership resolution and permission coverage evaluation into a single
+  authoritative answer: { allowed: boolean }.
+
+  This procedure is called by the domain service that owns the protected
+  resource, not by the edge. The edge does not evaluate permissions.
+  Domain services call this procedure and enforce the result locally
+  per the domain-permission-enforcement pattern:
+  patterns/platform/domain-permission-enforcement.yaml.
+source_files:
+  - src/domain/procedures.ts
+  - src/routes/permissions.ts
+caller_context: >
+  Called by considered-response (and future domain services) via
+  POST /permissions/check before serving protected organisation-scoped or
+  property-scoped resources. The caller uses the response to enforce access
+  or deny with non-leakage semantics.
+inputs:
+  - actorUserUuid (string UUID — from request body, the actor to evaluate)
+  - organisationUuid (string UUID — from request body, the tenancy context)
+  - permissionKey (string — must be a key in the permission catalogue)
+  - propertyUuids (string UUID array, optional — for property-scoped checks)
+outputs:
+  - allowed (boolean)
+preconditions:
+  - All inputs validated at the HTTP boundary (Zod schema) before this
+    procedure is called.
+decision_logic:
+  - Validate permissionKey against the catalogue; throw UnknownPermission if absent.
+  - Look up user by actorUserUuid; return { allowed: false } if not found
+    (non-leakage: caller sees allowed: false, not a 404).
+  - Look up user_organisations membership; return { allowed: false } if not
+    a member (non-leakage).
+  - For property-scoped permissions with propertyUuids: validate all property_uuids
+    exist in property_authority_assignments; throw InvalidProperty if any are
+    unknown.
+  - Call EvaluatePermissionCoverage with the resolved user_organisation_id,
+    permissionKey, and propertyUuids.
+  - Return the result of EvaluatePermissionCoverage.
+error_behaviour:
+  - unknown_permission (400): permissionKey not in the catalogue.
+  - scope_mismatch (400): propertyUuids present for org-scoped, or absent
+    for property-scoped permissions (propagated from EvaluatePermissionCoverage).
+  - invalid_property (400): one or more property_uuids not registered in
+    property_authority_assignments.
+  - Returns { allowed: false } when user not found or not a member (non-leakage
+    — callers cannot distinguish these from lacking permission).
+non_leakage:
+  - User not found, membership not found, and lack of permission all return
+    { allowed: false } with HTTP 200. The HTTP status is not 404. Non-leakage
+    enforcement (mapping to 404) is the caller's responsibility.
+  - denial_reason is logged internally for observability but is not included
+    in the HTTP response.
+scoping_constraints:
+  - Operates entirely within the measured_judgement schema.
+  - Does not access considered-response or other domain service data.
+data_dependencies:
+  - measured_judgement.users (uuid, id)
+  - measured_judgement.user_organisations (organisation_uuid, user_id, id)
+  - measured_judgement.property_authority_assignments (property_uuid)
+  - EvaluatePermissionCoverage data dependencies
+side_effects: none
+default_outcome: >
+  Returns { allowed: true } when the actor has the required permission.
+  Returns { allowed: false } for non-member, missing user, or insufficient
+  permission — all with HTTP 200. Throws AppErrors for invalid inputs.

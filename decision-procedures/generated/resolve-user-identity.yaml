@@ -1,0 +1,54 @@
+procedure_name: ResolveUserIdentity
+procedure_kind: domain
+identifier_mode: boundary_resolving
+owning_service: measured-judgement
+purpose: >
+  Resolve an external identity (provider + external_subject) to the internal
+  platform actor_user_uuid. This is the platform bootstrap call: polite-intervention
+  calls this procedure on every authenticated request to convert the Auth0 token
+  subject into the stable internal user identifier.
+
+  Identity resolution and routing resolution are intentionally separate procedures.
+  This procedure returns only actor_user_uuid; it does not return routing information.
+source_files:
+  - src/domain/procedures.ts
+  - src/routes/identity.ts
+caller_context: >
+  Called by polite-intervention via GET /identity/resolve after validating the
+  inbound Auth0 JWT. The provider and external_subject are extracted from the
+  validated token claims. The result is placed in X-Actor-User-Uuid for
+  downstream service calls.
+inputs:
+  - provider (string, required — identity provider identifier, e.g. "auth0",
+    "google-oauth2")
+  - externalSubject (string, required — the provider's subject identifier)
+outputs:
+  - actor_user_uuid (string UUID — the stable internal platform user identifier)
+preconditions:
+  - provider must be non-empty.
+  - externalSubject must be non-empty.
+  - The inbound Auth0 JWT must have been validated before this procedure is called
+    (enforced by the caller, polite-intervention).
+decision_logic:
+  - Validate that provider and externalSubject are non-empty; throw InvalidRequest
+    if either is missing.
+  - Query user_identities JOIN users WHERE provider = $1 AND external_subject = $2
+    AND revoked_at IS NULL.
+  - If no row found (unknown identity or revoked identity), throw NotFound.
+    polite-intervention maps this to 401 unauthenticated at the edge.
+  - Return { actor_user_uuid: users.uuid }.
+error_behaviour:
+  - invalid_request (400): provider or external_subject is missing or empty.
+  - not_found (404): no matching identity record, or the identity is revoked.
+    Callers at the edge map this to 401 unauthenticated.
+scoping_constraints:
+  - Operates on the measured_judgement schema. No cross-service DB access.
+  - Does not perform routing resolution. Routing is a separate concern handled
+    by ResolveAuthorityInstance.
+data_dependencies:
+  - measured_judgement.user_identities (provider, external_subject, revoked_at)
+  - measured_judgement.users (uuid, id)
+side_effects: none
+default_outcome: >
+  Returns { actor_user_uuid } for a known, non-revoked identity.
+  Returns not_found (404) for unknown or revoked identities.

@@ -34,13 +34,12 @@ polite-intervention  (public edge)
   │           │
   │           ▼
   │     measured-judgement  ← this service
-  │         (identity, permissions, routing directory)
-  │
-  ▼
-considered-response  (domain data service)
+  │     ↑   (identity, permissions, routing directory)
+  ▼     │
+considered-response  (domain data service — calls MJ for permission evaluation)
 ```
 
-**Upstream callers:** `polite-intervention` (gateway). Future internal services requiring permission checks (e.g. reservation service) must also call this service. Only allowlisted internal services may call this service.
+**Upstream callers:** `polite-intervention` (gateway) and `considered-response` (domain data service — calls this service for permission evaluation). Only allowlisted internal services may call this service. Future internal services requiring permission checks must also call this service.
 
 **Downstream dependencies:** PostgreSQL database (schema: `measured_judgement`)
 
@@ -60,7 +59,7 @@ Validation checks:
 - Signature via Auth0 JWKS endpoint (`AUTH0_JWKS_URI`)
 - Issuer (`AUTH0_ISSUER`)
 - Audience (`AUTH0_AUDIENCE`)
-- Authorised party (`AUTH0_ALLOWED_AZP`) — caller `azp` claim must match this value exactly
+- Authorised party (`AUTH0_ALLOWED_AZP`) — comma-separated allowlist of permitted caller `azp` claims. Accepts multiple callers (e.g. `polite-intervention` and `considered-response` client IDs)
 
 `caller_service_id` is derived from the token `azp` claim.
 
@@ -152,7 +151,7 @@ All variables are validated at boot. Missing or malformed values cause immediate
 |----------|-------------|
 | `AUTH0_DOMAIN` | Auth0 tenant domain |
 | `AUTH0_AUDIENCE` | Auth0 API audience identifier |
-| `AUTH0_ALLOWED_AZP` | Authorised party — M2M client ID of the allowed caller |
+| `AUTH0_ALLOWED_AZP` | Comma-separated allowlist of permitted caller `azp` claims. Accepts multiple backend callers (currently `polite-intervention` and `considered-response`). |
 | `AUTH0_ISSUER` | Auth0 issuer URL |
 | `AUTH0_JWKS_URI` | Auth0 JWKS endpoint |
 | `DATABASE_URL` | Pooled Postgres connection string (runtime queries) |

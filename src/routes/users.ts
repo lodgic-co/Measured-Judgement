@@ -1,8 +1,11 @@
 import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 import { pool } from '../db/pool.js';
 import { parseDelegatedActor } from '../auth/actor.js';
 import { InvalidRequest } from '../errors/index.js';
 import { ResolveUserLocaleContext } from '../domain/procedures.js';
+
+const uuidSchema = z.string().uuid();
 
 export async function usersRoutes(app: FastifyInstance): Promise<void> {
   app.get('/users/me/preferences', async (request, reply) => {
@@ -12,7 +15,12 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
       throw InvalidRequest('X-Actor-Type: user and X-Actor-User-Uuid required');
     }
 
-    const actorUserUuid = actor.id;
+    const uuidResult = uuidSchema.safeParse(actor.id);
+    if (!uuidResult.success) {
+      throw InvalidRequest('X-Actor-User-Uuid must be a valid UUID');
+    }
+
+    const actorUserUuid = uuidResult.data;
     request.actorUserUuid = actorUserUuid;
 
     const { resolved_language, resolved_locale, resolved_timezone } =

@@ -10,7 +10,7 @@ process.env['OTEL_SERVICE_NAME'] = 'measured-judgement-test';
 process.env['SYSTEM_DEFAULT_LANGUAGE'] = process.env['SYSTEM_DEFAULT_LANGUAGE'] ?? 'en';
 process.env['SYSTEM_DEFAULT_LOCALE'] = process.env['SYSTEM_DEFAULT_LOCALE'] ?? 'en-AU';
 process.env['SYSTEM_DEFAULT_TIMEZONE'] = process.env['SYSTEM_DEFAULT_TIMEZONE'] ?? 'UTC';
-process.env['DATABASE_URL'] = process.env['DATABASE_URL'] ?? 'postgresql://user:pass@localhost:5432/lodgic_test';
+process.env['DATABASE_URL'] = process.env['DATABASE_URL'] ?? 'postgres://lodgic:lodgic@localhost:5432/measured_judgement?sslmode=disable';
 process.env['DB_SCHEMA'] = 'measured_judgement';
 process.env['DB_POOL_SIZE'] = '2';
 process.env['DB_CONNECTION_TIMEOUT_MS'] = '3000';

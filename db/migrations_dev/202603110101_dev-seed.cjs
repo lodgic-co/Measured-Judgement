@@ -222,7 +222,7 @@ module.exports.up = (pgm) => {
 
   pgm.sql(`
     INSERT INTO measured_judgement.authority_instances (id, base_url)
-    VALUES ('authority-main', 'http://considered-response-dev:10000')
+    VALUES ('authority-main', 'http://considered-response:5000')
     ON CONFLICT (id) DO UPDATE SET base_url = EXCLUDED.base_url
   `);
 

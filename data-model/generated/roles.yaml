@@ -1,0 +1,40 @@
+id: roles
+entity_name: roles
+owning_service: measured-judgement
+persistence_object: measured_judgement.roles
+tenant_scope: organisation
+mutability: mutable
+primary_key: [id]
+foreign_keys: []
+unique_constraints:
+  - [uuid]
+  - [organisation_uuid, name]
+cross_service_references:
+  - column: organisation_uuid
+    references_service: considered-response
+    references_entity: organisations
+    reference_mode: uuid_fk
+    notes: >
+      No database-level FK. Cross-service reference enforced by application
+      semantics. Roles are scoped per organisation but owned by
+      measured-judgement.
+fields:
+  - name: id
+    type: integer
+    nullable: false
+  - name: organisation_uuid
+    type: uuid
+    nullable: false
+  - name: uuid
+    type: uuid
+    nullable: false
+    public_identifier: true
+  - name: name
+    type: text
+    nullable: false
+  - name: created_at
+    type: timestamptz
+    nullable: false
+  - name: updated_at
+    type: timestamptz
+    nullable: false

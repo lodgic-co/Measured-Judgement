@@ -1,0 +1,35 @@
+id: user_organisations
+entity_name: user_organisations
+owning_service: measured-judgement
+persistence_object: measured_judgement.user_organisations
+tenant_scope: organisation
+mutability: append_only
+primary_key: [id]
+foreign_keys:
+  - columns: [user_id]
+    references: measured_judgement.users(id)
+    on_delete: CASCADE
+unique_constraints:
+  - [organisation_uuid, user_id]
+cross_service_references:
+  - column: organisation_uuid
+    references_service: considered-response
+    references_entity: organisations
+    reference_mode: uuid_fk
+    notes: >
+      No database-level FK. Cross-service reference enforced by application
+      semantics. organisation_uuid is the platform UUID for the organisation
+      owned by considered-response.
+fields:
+  - name: id
+    type: integer
+    nullable: false
+  - name: organisation_uuid
+    type: uuid
+    nullable: false
+  - name: user_id
+    type: integer
+    nullable: false
+  - name: created_at
+    type: timestamptz
+    nullable: false

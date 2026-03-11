@@ -1,0 +1,42 @@
+id: users
+entity_name: users
+owning_service: measured-judgement
+persistence_object: measured_judgement.users
+tenant_scope: service-global
+mutability: mutable
+primary_key: [id]
+foreign_keys: []
+unique_constraints:
+  - [uuid]
+  - [email]
+fields:
+  - name: id
+    type: integer
+    nullable: false
+  - name: uuid
+    type: uuid
+    nullable: false
+    public_identifier: true
+  - name: email
+    type: text
+    nullable: false
+    validation_constraints:
+      - canonicalised via trigger measured_judgement.canonicalise_email()
+  - name: name
+    type: text
+    nullable: true
+  - name: preferred_language
+    type: text
+    nullable: true
+  - name: preferred_locale
+    type: text
+    nullable: true
+  - name: preferred_timezone
+    type: text
+    nullable: true
+  - name: created_at
+    type: timestamptz
+    nullable: false
+  - name: updated_at
+    type: timestamptz
+    nullable: false

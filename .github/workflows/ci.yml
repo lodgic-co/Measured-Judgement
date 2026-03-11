@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "**"]
   pull_request:
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U ci"
+          --health-cmd="pg_isready -U ci -d measured_judgement_test"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
@@ -28,39 +28,32 @@ jobs:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/measured_judgement_test
       DATABASE_URL_DIRECT: postgresql://ci:ci@localhost:5432/measured_judgement_test
       DB_SCHEMA: measured_judgement
+      DB_POOL_SIZE: "10"
+      DB_CONNECTION_TIMEOUT_MS: "5000"
+      DB_IDLE_TIMEOUT_MS: "30000"
+      AUTH0_DOMAIN: test.auth0.com
+      AUTH0_ISSUER: https://test.auth0.com/
       AUTH0_AUDIENCE: https://api.test/measured-judgement
       AUTH0_ALLOWED_AZP: test-client
+      AUTH0_JWKS_URI: http://127.0.0.1:19999/.well-known/jwks.json
+      SYSTEM_DEFAULT_LANGUAGE: en
+      SYSTEM_DEFAULT_LOCALE: en-AU
+      SYSTEM_DEFAULT_TIMEZONE: UTC
+      INTERNAL_SERVICE_SECRET: ci-internal-secret
+      LOG_LEVEL: silent
+      OTEL_EXPORTER_OTLP_ENDPOINT: ""
       NODE_ENV: test
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: "20"
+          cache: "pnpm"
 
-      - name: Enable corepack
-        run: corepack enable
+      - run: pnpm install --frozen-lockfile
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate artifacts
-        run: pnpm generate
-
-      - name: Run migrations
-        run: pnpm migrate:deploy
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Run tests
-        run: pnpm test
-
-      - name: Build
-        run: pnpm build
+      - run: pnpm run ci

@@ -1,0 +1,57 @@
+{
+  "name": "measured-judgement",
+  "version": "1.0.0",
+  "description": "Internal authority service — identity resolution, permission evaluation, and routing directory",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/ tests/",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "openapi:check": "redocly lint openapi/openapi.yaml --config openapi/.redocly.yaml",
+    "migrate": "node scripts/run-migrate.cjs",
+    "migrate:down": "node scripts/run-rollback.cjs",
+    "db:seed:dev": "node-pg-migrate up --migrations-dir db/migrations_dev --database-url $DATABASE_URL_DIRECT --migrations-table pgmigrations_measured_judgement_dev",
+    "db:create-migration": "node-pg-migrate create --migrations-dir db/migrations",
+    "ci": "pnpm typecheck && pnpm lint && pnpm openapi:check && pnpm migrate && pnpm test && pnpm build"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.71.0",
+    "@opentelemetry/exporter-logs-otlp-http": "^0.213.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.213.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.213.0",
+    "@opentelemetry/resources": "^2.6.0",
+    "@opentelemetry/sdk-logs": "^0.213.0",
+    "@opentelemetry/sdk-metrics": "^2.6.0",
+    "@opentelemetry/sdk-node": "^0.213.0",
+    "@opentelemetry/semantic-conventions": "^1.39.0",
+    "@redocly/cli": "^2.20.4",
+    "env-schema": "^7.0.0",
+    "fastify": "^5.8.2",
+    "jose": "^6.2.1",
+    "node-pg-migrate": "^8.0.4",
+    "pg": "^8.20.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.4.0",
+    "@types/pg": "^8.18.0",
+    "eslint": "^10.0.3",
+    "js-yaml": "^4.1.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.57.0",
+    "vitest": "^4.0.18"
+  },
+  "engines": {
+    "node": ">=20.0.0 <21.0.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

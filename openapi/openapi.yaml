@@ -1,0 +1,340 @@
+openapi: "3.0.3"
+info:
+  title: Measured Judgement API
+  version: "1.0.0"
+  description: >
+    Internal authority service API. Owns identity resolution, permission
+    evaluation, organisation membership, and authority routing directory.
+    Not publicly accessible — called only by polite-intervention and other
+    internal services.
+
+servers:
+  - url: /
+
+security:
+  - BearerAuth: []
+
+paths:
+  /health/live:
+    get:
+      operationId: healthLive
+      x-auth-mode: none
+      x-tenant-scope: none
+      x-public-surface: false
+      x-error-envelope: not_applicable
+      summary: Liveness probe
+      tags: [Health]
+      security: []
+      responses:
+        "200":
+          description: Service process is running
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+
+  /health/ready:
+    get:
+      operationId: healthReady
+      x-auth-mode: none
+      x-tenant-scope: none
+      x-public-surface: false
+      x-error-envelope: not_applicable
+      summary: Readiness probe
+      tags: [Health]
+      security: []
+      responses:
+        "200":
+          description: Service is ready to accept traffic
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ready]
+        "503":
+          description: Service is not yet ready
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [not_ready]
+
+  /internal/ping:
+    get:
+      operationId: internalPing
+      x-auth-mode: service_token
+      x-tenant-scope: none
+      x-public-surface: false
+      x-error-envelope: components/errors.yaml#/components/schemas/ErrorEnvelope
+      summary: Auth-validated ping
+      description: Returns a simple acknowledgement proving the caller holds a valid service token.
+      tags: [Internal]
+      responses:
+        "200":
+          description: Token is valid
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                    enum: [true]
+        "401":
+          $ref: "components/errors.yaml#/components/responses/Unauthenticated"
+
+  /identity/resolve:
+    get:
+      operationId: resolveUserIdentity
+      x-auth-mode: bearer
+      x-tenant-scope: none
+      x-public-surface: false
+      x-error-envelope: components/errors.yaml#/components/schemas/ErrorEnvelope
+      summary: Resolve external identity to actor_user_uuid
+      description: >
+        Maps an external identity (provider + external_subject) to the
+        internal actor_user_uuid. This is the platform bootstrap call —
+        polite-intervention calls this before any user-scoped request.
+        The edge does not trust a client-supplied user_uuid; it always
+        resolves from the Auth0 token claims via this endpoint.
+      tags: [Identity]
+      parameters:
+        - name: provider
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+          description: Identity provider name (e.g. auth0)
+        - name: external_subject
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+          description: External subject identifier from the provider (Auth0 sub claim)
+      responses:
+        "200":
+          description: Identity resolved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [actor_user_uuid]
+                properties:
+                  actor_user_uuid:
+                    type: string
+                    format: uuid
+                    description: Internal cross-service user identifier
+        "400":
+          $ref: "components/errors.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "components/errors.yaml#/components/responses/Unauthenticated"
+        "404":
+          $ref: "components/errors.yaml#/components/responses/NotFound"
+        "500":
+          $ref: "components/errors.yaml#/components/responses/InternalError"
+
+  /users/me/preferences:
+    get:
+      operationId: getUserPreferences
+      x-auth-mode: bearer
+      x-tenant-scope: none
+      x-public-surface: false
+      x-error-envelope: components/errors.yaml#/components/schemas/ErrorEnvelope
+      summary: Get current user locale preferences
+      description: >
+        Returns the resolved locale, language, and timezone for the
+        delegated actor user. Falls back to system defaults when user
+        preferences are null.
+      tags: [Users]
+      parameters:
+        - $ref: "#/components/parameters/XActorUserUuid"
+        - $ref: "#/components/parameters/XActorType"
+      responses:
+        "200":
+          description: User preferences resolved
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [language, locale, timezone]
+                properties:
+                  language:
+                    type: string
+                    example: en
+                  locale:
+                    type: string
+                    example: en-AU
+                  timezone:
+                    type: string
+                    example: Australia/Sydney
+        "400":
+          $ref: "components/errors.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "components/errors.yaml#/components/responses/Unauthenticated"
+        "404":
+          $ref: "components/errors.yaml#/components/responses/NotFound"
+        "500":
+          $ref: "components/errors.yaml#/components/responses/InternalError"
+
+  /routing/authority-instance:
+    get:
+      operationId: resolveAuthorityInstance
+      x-auth-mode: bearer
+      x-tenant-scope: none
+      x-public-surface: false
+      x-error-envelope: components/errors.yaml#/components/schemas/ErrorEnvelope
+      summary: Resolve authority instance for an organisation
+      description: >
+        Returns the authority_instance_id and base_url for the given
+        organisation_uuid. This is the central routing lookup —
+        polite-intervention calls this for every organisation-scoped
+        request. Routing decisions occur only at the edge, sourced from
+        this service.
+      tags: [Routing]
+      parameters:
+        - name: organisation_uuid
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Organisation UUID to resolve routing for
+      responses:
+        "200":
+          description: Authority instance resolved
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [authority_instance_id, base_url]
+                properties:
+                  authority_instance_id:
+                    type: string
+                    minLength: 1
+                    description: Stable identifier for the authority instance
+                    example: authority-main
+                  base_url:
+                    type: string
+                    format: uri
+                    description: Base URL for requests routed to this authority instance
+                    example: https://considered-response.internal
+        "400":
+          $ref: "components/errors.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "components/errors.yaml#/components/responses/Unauthenticated"
+        "404":
+          $ref: "components/errors.yaml#/components/responses/NotFound"
+        "500":
+          $ref: "components/errors.yaml#/components/responses/InternalError"
+
+  /permissions/check:
+    post:
+      operationId: checkPermission
+      x-auth-mode: bearer
+      x-tenant-scope: organisation
+      x-public-surface: false
+      x-error-envelope: components/errors.yaml#/components/schemas/ErrorEnvelope
+      summary: Evaluate permission for a user within an organisation
+      description: >
+        Evaluates whether the specified user holds a given permission key
+        within the organisation, optionally scoped to specific properties.
+        Called by domain services (e.g. considered-response) to enforce
+        authorization decisions locally. The edge does not call this endpoint
+        — permission enforcement occurs in the service owning the protected
+        domain behaviour.
+      tags: [Permissions]
+      parameters:
+        - $ref: "#/components/parameters/XActorUserUuid"
+        - $ref: "#/components/parameters/XActorType"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [actor_user_uuid, organisation_uuid, permission_key]
+              properties:
+                actor_user_uuid:
+                  type: string
+                  format: uuid
+                  description: Internal user UUID resolved by identity endpoint
+                organisation_uuid:
+                  type: string
+                  format: uuid
+                  description: Organisation within which to evaluate the permission
+                permission_key:
+                  type: string
+                  minLength: 1
+                  description: Permission key from the platform permission catalogue
+                  example: organisation.properties.read
+                property_uuids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: >
+                    Property UUIDs for property-scoped permission evaluation.
+                    Required for property-scoped permissions; must be omitted
+                    for organisation-scoped permissions.
+      responses:
+        "200":
+          description: Permission evaluation result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [allowed]
+                properties:
+                  allowed:
+                    type: boolean
+                    description: Whether the permission is granted
+        "400":
+          $ref: "components/errors.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "components/errors.yaml#/components/responses/Unauthenticated"
+        "404":
+          $ref: "components/errors.yaml#/components/responses/NotFound"
+        "500":
+          $ref: "components/errors.yaml#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Auth0 M2M service token
+
+  parameters:
+    XActorUserUuid:
+      name: X-Actor-User-Uuid
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: UUID of the delegated actor user. Required when X-Actor-Type is user, service, or system.
+    XActorType:
+      name: X-Actor-Type
+      in: header
+      required: true
+      schema:
+        type: string
+        enum: [user, service, system, anonymous]
+      description: Type of the delegated actor

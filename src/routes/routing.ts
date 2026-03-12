@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { pool } from '../db/pool.js';
+import { config } from '../config/index.js';
 import { ResolveAuthorityInstance } from '../domain/procedures.js';
 import { InvalidRequest } from '../errors/index.js';
 
@@ -23,5 +24,9 @@ export async function routingRoutes(app: FastifyInstance): Promise<void> {
     const resolved = await ResolveAuthorityInstance(pool, organisation_uuid);
 
     return reply.code(200).send(resolved);
+  });
+
+  app.get('/routing/operational-grace', async (_request, reply) => {
+    return reply.code(200).send({ base_url: config.OPERATIONAL_GRACE_BASE_URL });
   });
 }

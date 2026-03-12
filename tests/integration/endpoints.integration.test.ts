@@ -533,6 +533,22 @@ describe('measured-judgement endpoint integration tests', () => {
     });
   });
 
+  describe('GET /routing/operational-grace', () => {
+    it('returns 200 with base_url from OPERATIONAL_GRACE_BASE_URL env var', async () => {
+      const res = await request
+        .get('/routing/operational-grace')
+        .set('X-Internal-Secret', INTERNAL_SECRET);
+      expect(res.status).toBe(200);
+      expect(typeof res.body.base_url).toBe('string');
+      expect(res.body.base_url.length).toBeGreaterThan(0);
+    });
+
+    it('returns 401 when no auth credential provided', async () => {
+      const res = await request.get('/routing/operational-grace');
+      expect(res.status).toBe(401);
+    });
+  });
+
   describe('cross-tenancy isolation on permissions', () => {
     it('returns allowed:false when checking a different org the user is not in', async () => {
       const otherOrgUuid = 'bbbbbbbb-cccc-dddd-eeee-ffffffffffff';

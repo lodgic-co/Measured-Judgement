@@ -15,3 +15,4 @@ process.env['DB_SCHEMA'] = 'measured_judgement';
 process.env['DB_POOL_SIZE'] = '2';
 process.env['DB_CONNECTION_TIMEOUT_MS'] = '3000';
 process.env['DB_IDLE_TIMEOUT_MS'] = '5000';
+process.env['OPERATIONAL_GRACE_BASE_URL'] = process.env['OPERATIONAL_GRACE_BASE_URL'] ?? 'https://operational-grace.internal';

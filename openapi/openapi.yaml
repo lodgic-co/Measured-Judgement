@@ -243,6 +243,39 @@ paths:
         "500":
           $ref: "components/errors.yaml#/components/responses/InternalError"
 
+  /routing/operational-grace:
+    get:
+      operationId: resolveOperationalGraceBaseUrl
+      x-auth-mode: bearer
+      x-tenant-scope: none
+      x-public-surface: false
+      x-error-envelope: components/errors.yaml#/components/schemas/ErrorEnvelope
+      summary: Resolve operational-grace base URL
+      description: >
+        Returns the configured base URL for the operational-grace service.
+        Non-sharded initially — always returns the same URL. Forward-compatible
+        with future property-domicile sharding. Called by polite-intervention
+        before forwarding reservation requests to operational-grace.
+      tags: [Routing]
+      responses:
+        "200":
+          description: operational-grace base URL resolved
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [base_url]
+                properties:
+                  base_url:
+                    type: string
+                    format: uri
+                    description: Base URL for operational-grace
+                    example: https://operational-grace.internal
+        "401":
+          $ref: "components/errors.yaml#/components/responses/Unauthenticated"
+        "500":
+          $ref: "components/errors.yaml#/components/responses/InternalError"
+
   /permissions/check:
     post:
       operationId: checkPermission

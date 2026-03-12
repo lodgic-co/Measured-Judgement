@@ -18,7 +18,6 @@ const MINIMAL_ENV: Record<string, string> = {
   SYSTEM_DEFAULT_LANGUAGE: 'en',
   SYSTEM_DEFAULT_LOCALE: 'en-AU',
   SYSTEM_DEFAULT_TIMEZONE: 'UTC',
-  OPERATIONAL_GRACE_BASE_URL: 'https://operational-grace.internal.test',
 };
 
 function parseConfig(data: Record<string, string>) {

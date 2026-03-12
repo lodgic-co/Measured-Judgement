@@ -14,7 +14,6 @@ export const configSchema = {
     'SYSTEM_DEFAULT_LANGUAGE',
     'SYSTEM_DEFAULT_LOCALE',
     'SYSTEM_DEFAULT_TIMEZONE',
-    'OPERATIONAL_GRACE_BASE_URL',
   ],
   properties: {
     INTERNAL_SERVICE_SECRET: { type: 'string' as const },
@@ -46,7 +45,6 @@ export const configSchema = {
     SYSTEM_DEFAULT_TIMEZONE: { type: 'string' as const },
     OTEL_EXPORTER_OTLP_ENDPOINT: { type: 'string' as const, default: '' },
     OTEL_SERVICE_NAME: { type: 'string' as const, default: 'measured-judgement' },
-    OPERATIONAL_GRACE_BASE_URL: { type: 'string' as const },
   },
 };
 
@@ -70,7 +68,6 @@ export interface AppConfig {
   SYSTEM_DEFAULT_TIMEZONE: string;
   OTEL_EXPORTER_OTLP_ENDPOINT: string;
   OTEL_SERVICE_NAME: string;
-  OPERATIONAL_GRACE_BASE_URL: string;
 }
 
 /**

@@ -1,8 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { pool } from '../db/pool.js';
-import { config } from '../config/index.js';
-import { ResolveAuthorityInstance } from '../domain/procedures.js';
+import { ResolveAuthorityInstance, ResolveOperationalGraceInstance } from '../domain/procedures.js';
 import { InvalidRequest } from '../errors/index.js';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -26,7 +25,20 @@ export async function routingRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(200).send(resolved);
   });
 
-  app.get('/routing/operational-grace', async (_request, reply) => {
-    return reply.code(200).send({ base_url: config.OPERATIONAL_GRACE_BASE_URL });
+  const ogQuerySchema = z.object({
+    property_uuid: z.string().regex(UUID_REGEX, 'property_uuid must be a valid UUID'),
+  });
+
+  app.get('/routing/operational-grace', async (request, reply) => {
+    const result = ogQuerySchema.safeParse(request.query);
+    if (!result.success) {
+      throw InvalidRequest(result.error.issues[0].message);
+    }
+
+    const { property_uuid } = result.data;
+
+    const resolved = await ResolveOperationalGraceInstance(pool, property_uuid);
+
+    return reply.code(200).send(resolved);
   });
 }

@@ -17,10 +17,13 @@ cross_service_references:
     reference_mode: uuid_fk
     notes: >
       No database-level FK. Cross-service reference by UUID. Each property
-      is assigned to at most one authority_instance_id. Also used as the
-      routing directory validation source for property-scoped permission
-      checks (property_uuids are validated against this table before
-      permission evaluation proceeds).
+      is assigned to exactly one authority_instance_id.
+      Primary use: property-scoped routing for operational-grace. The
+      authority_instances row for OG is keyed operational-grace-main.
+      Secondary use: routing directory validation in permission checks —
+      property_uuids are validated against this table (COUNT(*) existence
+      check only) before permission evaluation proceeds. The
+      authority_instance_id value is not inspected during validation.
 fields:
   - name: id
     type: integer
@@ -38,7 +41,10 @@ fields:
     type: timestamptz
     nullable: false
 notes: >
-  Slice 1: data model and table exist; property routing endpoints are not
-  yet exposed (deferred to a future slice). The table is currently used
-  only to validate that property_uuids in permission check requests are
-  known to the routing directory.
+  Property-scoped routing table for operational-grace. Rows point to the
+  operational-grace-main entry in authority_instances. The GET
+  /routing/operational-grace endpoint queries this table to resolve the
+  OG instance and base_url for a given property_uuid.
+  Also used for routing directory validation in permission checks: a
+  COUNT(*) existence check confirms that submitted property_uuids are
+  known before permission evaluation proceeds.

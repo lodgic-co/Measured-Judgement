@@ -10,6 +10,7 @@ const USER1_UUID = '22222222-2222-2222-2222-222222222222';
 const USER2_UUID = '33333333-3333-3333-3333-333333333333';
 const OUTSIDER_UUID = '66666666-6666-6666-6666-666666666666';
 const AUTHORITY_INSTANCE_ID = 'authority-main';
+const OG_INSTANCE_ID = 'operational-grace-main';
 const PROP1_UUID = '44444444-4444-4444-4444-444444444444';
 const UNREGISTERED_PROP_UUID = 'ffffffff-ffff-ffff-ffff-ffffffffffff';
 
@@ -123,6 +124,12 @@ async function seedTestData(): Promise<void> {
   `, [AUTHORITY_INSTANCE_ID]);
 
   await testPool.query(`
+    INSERT INTO measured_judgement.authority_instances (id, base_url)
+    VALUES ($1, 'https://operational-grace.internal')
+    ON CONFLICT (id) DO UPDATE SET base_url = EXCLUDED.base_url
+  `, [OG_INSTANCE_ID]);
+
+  await testPool.query(`
     INSERT INTO measured_judgement.organisation_authority_assignments (organisation_uuid, authority_instance_id)
     VALUES ($1, $2)
     ON CONFLICT (organisation_uuid) DO UPDATE SET authority_instance_id = EXCLUDED.authority_instance_id
@@ -138,7 +145,7 @@ async function seedTestData(): Promise<void> {
     INSERT INTO measured_judgement.property_authority_assignments (property_uuid, authority_instance_id)
     VALUES ($1, $2)
     ON CONFLICT (property_uuid) DO UPDATE SET authority_instance_id = EXCLUDED.authority_instance_id
-  `, [PROP1_UUID, AUTHORITY_INSTANCE_ID]);
+  `, [PROP1_UUID, OG_INSTANCE_ID]);
 }
 
 function expectEnvelope(body: unknown, expectedStatus: number, expectedCode: string): void {
@@ -534,17 +541,41 @@ describe('measured-judgement endpoint integration tests', () => {
   });
 
   describe('GET /routing/operational-grace', () => {
-    it('returns 200 with base_url from OPERATIONAL_GRACE_BASE_URL env var', async () => {
+    it('returns 400 when property_uuid is missing', async () => {
       const res = await request
         .get('/routing/operational-grace')
         .set('X-Internal-Secret', INTERNAL_SECRET);
+      expect(res.status).toBe(400);
+      expectEnvelope(res.body, 400, 'invalid_request');
+    });
+
+    it('returns 400 when property_uuid is not a valid UUID', async () => {
+      const res = await request
+        .get('/routing/operational-grace?property_uuid=not-a-uuid')
+        .set('X-Internal-Secret', INTERNAL_SECRET);
+      expect(res.status).toBe(400);
+      expectEnvelope(res.body, 400, 'invalid_request');
+    });
+
+    it('returns 404 when no assignment exists for property', async () => {
+      const res = await request
+        .get(`/routing/operational-grace?property_uuid=${UNREGISTERED_PROP_UUID}`)
+        .set('X-Internal-Secret', INTERNAL_SECRET);
+      expect(res.status).toBe(404);
+      expectEnvelope(res.body, 404, 'not_found');
+    });
+
+    it('returns 200 with authority_instance_id and base_url for known property', async () => {
+      const res = await request
+        .get(`/routing/operational-grace?property_uuid=${PROP1_UUID}`)
+        .set('X-Internal-Secret', INTERNAL_SECRET);
       expect(res.status).toBe(200);
-      expect(typeof res.body.base_url).toBe('string');
-      expect(res.body.base_url.length).toBeGreaterThan(0);
+      expect(res.body.authority_instance_id).toBe(OG_INSTANCE_ID);
+      expect(res.body.base_url).toBe('https://operational-grace.internal');
     });
 
     it('returns 401 when no auth credential provided', async () => {
-      const res = await request.get('/routing/operational-grace');
+      const res = await request.get(`/routing/operational-grace?property_uuid=${PROP1_UUID}`);
       expect(res.status).toBe(401);
     });
   });

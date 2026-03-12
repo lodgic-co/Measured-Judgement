@@ -116,6 +116,43 @@ export async function ResolveAuthorityInstance(
   };
 }
 
+/**
+ * Resolves the operational-grace instance for a property_uuid.
+ *
+ * Queries property_authority_assignments (property-scoped routing table)
+ * joined to authority_instances. Returns both the instance id and base_url,
+ * consistent with the authority-instance routing shape.
+ *
+ * The permission-validation COUNT(*) query is unaffected — it does not
+ * inspect the authority_instance_id value.
+ */
+export async function ResolveOperationalGraceInstance(
+  pool: Pool,
+  propertyUuid: string,
+): Promise<{ authority_instance_id: string; base_url: string }> {
+  if (!propertyUuid || propertyUuid.trim().length === 0) {
+    throw InvalidRequest('property_uuid is required');
+  }
+
+  const result = await pool.query(
+    `SELECT paa.authority_instance_id, ai.base_url
+     FROM measured_judgement.property_authority_assignments paa
+     JOIN measured_judgement.authority_instances ai
+       ON ai.id = paa.authority_instance_id
+     WHERE paa.property_uuid = $1::uuid`,
+    [propertyUuid],
+  );
+
+  if (result.rows.length === 0) {
+    throw NotFound('No operational-grace instance assignment found for property');
+  }
+
+  return {
+    authority_instance_id: result.rows[0].authority_instance_id,
+    base_url: result.rows[0].base_url,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Membership
 // ---------------------------------------------------------------------------

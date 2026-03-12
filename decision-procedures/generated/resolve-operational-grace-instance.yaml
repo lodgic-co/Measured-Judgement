@@ -1,0 +1,66 @@
+procedure_name: ResolveOperationalGraceInstance
+procedure_kind: domain
+identifier_mode: boundary_resolving
+owning_service: measured-judgement
+purpose: >
+  Resolve the authority_instance_id and deployment base_url for a given
+  property_uuid. This is the database-backed property-scoped routing lookup
+  that enables polite-intervention to route reservation calls to the correct
+  operational-grace deployment.
+
+  property_authority_assignments is the property-scoped routing table for
+  operational-grace. authority_instances holds the named instance rows
+  (e.g. operational-grace-main). No new tables are required — the existing
+  authority model supports OG routing directly.
+
+  polite-intervention's resolve-operational-grace-instance procedure delegates
+  to this endpoint per the centralised-routing-resolution pattern:
+  patterns/platform/centralised-routing-resolution.yaml.
+source_files:
+  - src/domain/procedures.ts
+  - src/routes/routing.ts
+caller_context: >
+  Called by polite-intervention via GET /routing/operational-grace?property_uuid=...
+  on every property-reservation request. The propertyUuid is extracted from
+  the request query string after UUID validation.
+inputs:
+  - propertyUuid (string UUID, required)
+outputs:
+  - authority_instance_id (string — the named deployment identifier,
+    e.g. operational-grace-main)
+  - base_url (string — the downstream service URL for routing)
+preconditions:
+  - propertyUuid must be a syntactically valid UUID (enforced at the HTTP
+    boundary before this procedure is called).
+decision_logic:
+  - Validate propertyUuid is non-empty; throw InvalidRequest if missing.
+  - Query property_authority_assignments JOIN authority_instances
+    WHERE property_uuid = $1.
+  - If no row found, throw NotFound.
+    polite-intervention maps this to bad_gateway (502) — there is no routing
+    assignment for this property.
+  - Return { authority_instance_id, base_url }.
+routing_invariants:
+  - Every routable property must have an explicit row in
+    property_authority_assignments pointing to an operational-grace instance.
+  - No wildcard entries are permitted.
+  - The routing table is owned entirely by measured-judgement. polite-intervention
+    does not maintain a local routing table for operational-grace.
+  - The permission-validation COUNT(*) query in CheckPermission uses this
+    same table for existence checks but does not inspect authority_instance_id.
+    The two uses are independent.
+error_behaviour:
+  - invalid_request (400): propertyUuid is missing or empty.
+  - not_found (404): no routing assignment for the given propertyUuid.
+    Callers (polite-intervention) map this to bad_gateway (502).
+scoping_constraints:
+  - Operates on the measured_judgement schema. No cross-service DB access.
+  - Routing assignments are populated via seed data or admin tooling.
+data_dependencies:
+  - measured_judgement.property_authority_assignments (property_uuid,
+    authority_instance_id)
+  - measured_judgement.authority_instances (id, base_url)
+side_effects: none
+default_outcome: >
+  Returns { authority_instance_id, base_url } for a known property.
+  Returns not_found (404) for properties without a routing assignment.

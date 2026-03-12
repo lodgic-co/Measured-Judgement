@@ -245,34 +245,51 @@ paths:
 
   /routing/operational-grace:
     get:
-      operationId: resolveOperationalGraceBaseUrl
+      operationId: resolveOperationalGraceInstance
       x-auth-mode: bearer
       x-tenant-scope: none
       x-public-surface: false
       x-error-envelope: components/errors.yaml#/components/schemas/ErrorEnvelope
-      summary: Resolve operational-grace base URL
+      summary: Resolve operational-grace instance for a property
       description: >
-        Returns the configured base URL for the operational-grace service.
-        Non-sharded initially — always returns the same URL. Forward-compatible
-        with future property-domicile sharding. Called by polite-intervention
+        Resolves the operational-grace instance for the given property_uuid
+        from the property_authority_assignments and authority_instances tables.
+        Returns both the authority_instance_id and base_url, consistent with
+        the authority-instance routing shape. Called by polite-intervention
         before forwarding reservation requests to operational-grace.
       tags: [Routing]
+      parameters:
+        - name: property_uuid
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Property UUID to resolve operational-grace routing for
       responses:
         "200":
-          description: operational-grace base URL resolved
+          description: Operational-grace instance resolved
           content:
             application/json:
               schema:
                 type: object
-                required: [base_url]
+                required: [authority_instance_id, base_url]
                 properties:
+                  authority_instance_id:
+                    type: string
+                    description: Named instance identifier (e.g. operational-grace-main)
+                    example: operational-grace-main
                   base_url:
                     type: string
                     format: uri
-                    description: Base URL for operational-grace
+                    description: Base URL for the operational-grace instance
                     example: https://operational-grace.internal
+        "400":
+          $ref: "components/errors.yaml#/components/responses/InvalidRequest"
         "401":
           $ref: "components/errors.yaml#/components/responses/Unauthenticated"
+        "404":
+          $ref: "components/errors.yaml#/components/responses/NotFound"
         "500":
           $ref: "components/errors.yaml#/components/responses/InternalError"
 

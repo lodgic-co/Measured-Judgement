@@ -4,6 +4,7 @@ import {
   ResolveUserIdentity,
   ResolveUserLocaleContext,
   ResolveAuthorityInstance,
+  ResolveOperationalGraceInstance,
   AssertOrganisationMembership,
   EvaluatePermissionCoverage,
   CheckPermission,
@@ -115,6 +116,31 @@ describe('ResolveAuthorityInstance', () => {
   it('throws InvalidRequest when organisation_uuid is empty', async () => {
     const pool = makePool([]);
     await expect(ResolveAuthorityInstance(pool, '')).rejects.toThrow('organisation_uuid is required');
+  });
+});
+
+describe('ResolveOperationalGraceInstance', () => {
+  it('returns authority_instance_id and base_url', async () => {
+    const pool = makePool([
+      {
+        rows: [{ authority_instance_id: 'operational-grace-main', base_url: 'https://operational-grace.internal' }],
+      },
+    ]);
+    const result = await ResolveOperationalGraceInstance(pool, PROP_UUID);
+    expect(result).toEqual({
+      authority_instance_id: 'operational-grace-main',
+      base_url: 'https://operational-grace.internal',
+    });
+  });
+
+  it('throws NotFound when no assignment exists for property', async () => {
+    const pool = makePool([{ rows: [] }]);
+    await expect(ResolveOperationalGraceInstance(pool, PROP_UUID)).rejects.toMatchObject({ code: 'not_found' });
+  });
+
+  it('throws InvalidRequest when property_uuid is empty', async () => {
+    const pool = makePool([]);
+    await expect(ResolveOperationalGraceInstance(pool, '')).rejects.toThrow('property_uuid is required');
   });
 });
 

@@ -1,8 +1,10 @@
 import { config, emitDeprecationWarnings } from './config/index.js';
-import { shutdownOtel } from './observability/otel.js';
+import { shutdownOtel, verifyTelemetry } from './observability/otel.js';
 import { createApp } from './http/app.js';
 import { setReady, setDbPool } from './routes/health.js';
 import { pool, closePool } from './db/pool.js';
+
+verifyTelemetry(config.OTEL_EXPORTER_OTLP_ENDPOINT);
 
 const app = createApp();
 

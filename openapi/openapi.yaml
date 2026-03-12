@@ -285,7 +285,7 @@ paths:
                     description: Base URL for the operational-grace instance
                     example: https://operational-grace.internal
         "400":
-          $ref: "components/errors.yaml#/components/responses/InvalidRequest"
+          $ref: "components/errors.yaml#/components/responses/BadRequest"
         "401":
           $ref: "components/errors.yaml#/components/responses/Unauthenticated"
         "404":

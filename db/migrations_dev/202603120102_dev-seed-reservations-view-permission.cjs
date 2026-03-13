@@ -2,7 +2,7 @@
 // Required for USER1 (22222222-…) to pass the OG permission check on
 // GET /live|training/properties/:uuid/reservations.
 
-const ORG1_UUID = '11111111-1111-1111-1111-111111111111';
+const ORG1_UUID = '11111111-1111-4111-a111-111111111111';
 
 module.exports.up = (pgm) => {
   pgm.sql(`

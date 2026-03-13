@@ -5,14 +5,14 @@ import pg from 'pg';
 
 const INTERNAL_SECRET = process.env['INTERNAL_SERVICE_SECRET'] ?? 'test-internal-secret';
 
-const ORG_UUID = '11111111-1111-1111-1111-111111111111';
-const USER1_UUID = '22222222-2222-2222-2222-222222222222';
-const USER2_UUID = '33333333-3333-3333-3333-333333333333';
-const OUTSIDER_UUID = '66666666-6666-6666-6666-666666666666';
+const ORG_UUID = '11111111-1111-4111-a111-111111111111';
+const USER1_UUID = '22222222-2222-4222-a222-222222222222';
+const USER2_UUID = '33333333-3333-4333-a333-333333333333';
+const OUTSIDER_UUID = '66666666-6666-4666-a666-666666666666';
 const AUTHORITY_INSTANCE_ID = 'authority-main';
 const OG_INSTANCE_ID = 'operational-grace-main';
-const PROP1_UUID = '44444444-4444-4444-4444-444444444444';
-const UNREGISTERED_PROP_UUID = 'ffffffff-ffff-ffff-ffff-ffffffffffff';
+const PROP1_UUID = '44444444-4444-4444-a444-444444444444';
+const UNREGISTERED_PROP_UUID = 'ffffffff-ffff-4fff-afff-ffffffffffff';
 
 let app: FastifyInstance;
 let request: supertest.SuperTest<supertest.Test>;
@@ -30,7 +30,8 @@ async function seedTestData(): Promise<void> {
       ($1, 'happy@example.com', 'Happy User', 'en', 'en-AU', 'Australia/Sydney'),
       ($2, 'secondary@example.com', 'Secondary User', NULL, NULL, NULL),
       ($3, 'outsider@example.com', 'Outsider User', 'de', 'de-DE', 'Europe/Berlin')
-    ON CONFLICT (uuid) DO UPDATE SET
+    ON CONFLICT (email) DO UPDATE SET
+      uuid = EXCLUDED.uuid,
       preferred_language = EXCLUDED.preferred_language,
       preferred_locale = EXCLUDED.preferred_locale,
       preferred_timezone = EXCLUDED.preferred_timezone
@@ -290,7 +291,7 @@ describe('measured-judgement endpoint integration tests', () => {
       const res = await request
         .get('/users/me/preferences')
         .set('X-Internal-Secret', INTERNAL_SECRET)
-        .set('X-Actor-User-Uuid', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')
+        .set('X-Actor-User-Uuid', 'aaaaaaaa-bbbb-4ccc-addd-eeeeeeeeeeee')
         .set('X-Actor-Type', 'user');
       expect(res.status).toBe(404);
       expectEnvelope(res.body, 404, 'not_found');
@@ -426,7 +427,7 @@ describe('measured-judgement endpoint integration tests', () => {
         .set('X-Actor-Type', 'user')
         .send({
           actor_user_uuid: USER1_UUID,
-          organisation_uuid: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+          organisation_uuid: 'aaaaaaaa-bbbb-4ccc-addd-eeeeeeeeeeee',
           permission_key: 'organisation.properties.read',
         });
       expect(res.status).toBe(200);
@@ -524,7 +525,7 @@ describe('measured-judgement endpoint integration tests', () => {
 
     it('returns 404 not_found when no assignment for organisation', async () => {
       const res = await request
-        .get('/routing/authority-instance?organisation_uuid=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')
+        .get('/routing/authority-instance?organisation_uuid=aaaaaaaa-bbbb-4ccc-addd-eeeeeeeeeeee')
         .set('X-Internal-Secret', INTERNAL_SECRET);
       expect(res.status).toBe(404);
       expectEnvelope(res.body, 404, 'not_found');

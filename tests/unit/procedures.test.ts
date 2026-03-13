@@ -11,8 +11,8 @@ import {
 } from '../../src/domain/procedures.js';
 
 const USER_UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
-const ORG_UUID = '11111111-1111-1111-1111-111111111111';
-const PROP_UUID = '22222222-2222-2222-2222-222222222222';
+const ORG_UUID = '11111111-1111-4111-a111-111111111111';
+const PROP_UUID = '22222222-2222-4222-a222-222222222222';
 
 function makePool(queryResponses: Array<{ rows: unknown[] }>): Pool {
   let callIndex = 0;

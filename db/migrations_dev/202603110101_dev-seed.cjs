@@ -18,10 +18,10 @@ const ORG1_UUID  = '11111111-1111-4111-a111-111111111111';
 const ORG2_UUID  = '22222222-2222-4222-a222-222222222222';
 const USER1_UUID = '22222222-2222-4222-a222-222222222222';
 const USER2_UUID = '33333333-3333-4333-a333-333333333333';
-const USER3_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+const USER3_UUID = 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
 const PROP1_UUID = '44444444-4444-4444-a444-444444444444';
-const PROP2_UUID = '55555555-5555-5555-5555-555555555555';
-const PROP3_UUID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+const PROP2_UUID = '55555555-5555-4555-a555-555555555555';
+const PROP3_UUID = 'bbbbbbbb-bbbb-4bbb-abbb-bbbbbbbbbbbb';
 
 module.exports.up = (pgm) => {
 

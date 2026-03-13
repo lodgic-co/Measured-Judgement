@@ -7,8 +7,8 @@
 // it does not inspect the authority_instance_id value.
 
 const PROP1_UUID = '44444444-4444-4444-a444-444444444444';
-const PROP2_UUID = '55555555-5555-5555-5555-555555555555';
-const PROP3_UUID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+const PROP2_UUID = '55555555-5555-4555-a555-555555555555';
+const PROP3_UUID = 'bbbbbbbb-bbbb-4bbb-abbb-bbbbbbbbbbbb';
 
 module.exports.up = (pgm) => {
   pgm.sql(`

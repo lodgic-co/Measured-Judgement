@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { trace, context } from '@opentelemetry/api';
 import { loggerOptions } from '../observability/logger.js';
 import { healthRoutes } from '../routes/health.js';
 import { internalRoutes } from '../routes/internal.js';
@@ -28,6 +29,16 @@ export function createApp() {
     request.startTime = process.hrtime.bigint();
 
     if (!request.url.startsWith('/health')) {
+      // [DIAG] active trace_id at point of normal ingress log emission
+      const diagActiveSpan = trace.getSpan(context.active());
+      const diagActiveTraceId = diagActiveSpan?.spanContext().traceId ?? '(none)';
+      process.stderr.write(JSON.stringify({
+        mj_diag: 'ingress_log_hook',
+        path: request.url,
+        request_id: request.requestId,
+        active_trace_id_at_ingress_log: diagActiveTraceId,
+      }) + '\n');
+
       request.log.info(
         { request_id: request.requestId, method: request.method, path: request.url },
         'incoming request',

@@ -15,6 +15,20 @@ export function registerRequestId(app: FastifyInstance): void {
   app.decorateRequest('requestId', '');
 
   app.addHook('onRequest', async (request: FastifyRequest) => {
+    // [DIAG] earliest hook - log raw incoming trace headers and active context
+    const diagTraceparent = request.headers['traceparent'] ?? '(not-present)';
+    const diagTracestate = request.headers['tracestate'] ?? '(not-present)';
+    const diagXRequestId = request.headers['x-request-id'] ?? '(not-present)';
+    const diagEarlyActiveTraceId = getActiveTraceId() ?? '(none)';
+    process.stderr.write(JSON.stringify({
+      mj_diag: 'earliest_onRequest',
+      path: request.url,
+      raw_traceparent: diagTraceparent,
+      raw_tracestate: diagTracestate,
+      raw_x_request_id: diagXRequestId,
+      active_trace_id_at_hook: diagEarlyActiveTraceId,
+    }) + '\n');
+
     const incoming = request.headers['x-request-id'];
     const id =
       typeof incoming === 'string' && incoming.trim().length > 0

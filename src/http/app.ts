@@ -30,7 +30,7 @@ export function createApp() {
     if (!request.url.startsWith('/health')) {
       request.log.info(
         { request_id: request.requestId, method: request.method, path: request.url },
-        'incoming request',
+        'incoming_request',
       );
       const internalAuthenticated = verifyInternalSecret(request, reply);
       if (!internalAuthenticated) {
@@ -73,7 +73,7 @@ export function createApp() {
     if (request.permissionOutcome !== undefined) {
       log.permission_outcome = request.permissionOutcome;
     }
-    request.log.info(log, 'request completed');
+    request.log.info(log, 'request_completed');
     done();
   });
 

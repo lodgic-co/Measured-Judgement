@@ -3,9 +3,10 @@ import supertest from 'supertest';
 import type { FastifyInstance } from 'fastify';
 import pg from 'pg';
 
-vi.mock('jose', () => ({
-  createRemoteJWKSet: vi.fn().mockReturnValue({}),
-  jwtVerify: vi.fn().mockResolvedValue({ payload: { sub: 'svc|test', azp: 'test-client' } }),
+vi.mock('../../src/auth/verify-token.js', () => ({
+  verifyServiceToken: vi.fn().mockImplementation(async (request: { callerServiceId: string }) => {
+    request.callerServiceId = 'test-client';
+  }),
 }));
 
 const AUTH_HEADER = 'Bearer test-token';
@@ -184,7 +185,11 @@ describe('measured-judgement endpoint integration tests', () => {
   });
 
   describe('GET /identity/resolve', () => {
-    it('returns 401 when no Authorization header is provided', async () => {
+    it('returns 401 when auth fails', async () => {
+      const { verifyServiceToken } = await import('../../src/auth/verify-token.js');
+      vi.mocked(verifyServiceToken).mockRejectedValueOnce(
+        new (await import('../../src/errors/index.js')).AppError({ status: 401, code: 'unauthenticated', message: 'Unauthorized', retryable: false }),
+      );
       const res = await request
         .get('/identity/resolve?provider=auth0&external_subject=auth0|dev-happy-path');
       expect(res.status).toBe(401);
@@ -572,7 +577,11 @@ describe('measured-judgement endpoint integration tests', () => {
       expect(res.body.base_url).toBe('https://operational-grace.internal');
     });
 
-    it('returns 401 when no auth credential provided', async () => {
+    it('returns 401 when auth fails', async () => {
+      const { verifyServiceToken } = await import('../../src/auth/verify-token.js');
+      vi.mocked(verifyServiceToken).mockRejectedValueOnce(
+        new (await import('../../src/errors/index.js')).AppError({ status: 401, code: 'unauthenticated', message: 'Unauthorized', retryable: false }),
+      );
       const res = await request.get(`/routing/operational-grace?property_uuid=${PROP1_UUID}`);
       expect(res.status).toBe(401);
     });

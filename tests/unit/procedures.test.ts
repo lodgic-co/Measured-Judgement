@@ -6,6 +6,7 @@ import {
   ResolveAuthorityInstance,
   ResolveOperationalGraceInstance,
   AssertOrganisationMembership,
+  ResolveOrganisationScope,
   EvaluatePermissionCoverage,
   CheckPermission,
 } from '../../src/domain/procedures.js';
@@ -164,6 +165,34 @@ describe('AssertOrganisationMembership', () => {
   it('throws NotFound when membership not found', async () => {
     const pool = makePool([{ rows: [{ id: 42 }] }, { rows: [] }]);
     await expect(AssertOrganisationMembership(pool, ORG_UUID, USER_UUID)).rejects.toMatchObject({
+      code: 'not_found',
+    });
+  });
+});
+
+describe('ResolveOrganisationScope', () => {
+  it('returns resolved_organisation_uuid when actor is a member', async () => {
+    const pool = makePool([
+      { rows: [{ id: 42 }] },   // users
+      { rows: [{ id: 99 }] },   // user_organisations
+    ]);
+    const result = await ResolveOrganisationScope(pool, USER_UUID, ORG_UUID);
+    expect(result).toEqual({ resolved_organisation_uuid: ORG_UUID });
+  });
+
+  it('throws NotFound when user not found (non-leakage)', async () => {
+    const pool = makePool([{ rows: [] }]);
+    await expect(ResolveOrganisationScope(pool, USER_UUID, ORG_UUID)).rejects.toMatchObject({
+      code: 'not_found',
+    });
+  });
+
+  it('throws NotFound when actor is not a member (non-leakage)', async () => {
+    const pool = makePool([
+      { rows: [{ id: 42 }] },  // users found
+      { rows: [] },             // no membership row
+    ]);
+    await expect(ResolveOrganisationScope(pool, USER_UUID, ORG_UUID)).rejects.toMatchObject({
       code: 'not_found',
     });
   });

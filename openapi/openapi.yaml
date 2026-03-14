@@ -293,6 +293,66 @@ paths:
         "500":
           $ref: "components/errors.yaml#/components/responses/InternalError"
 
+  /organisations/resolve-scope:
+    get:
+      operationId: resolveOrganisationScope
+      x-auth-mode: bearer
+      x-tenant-scope: organisation
+      x-public-surface: false
+      x-error-envelope: components/errors.yaml#/components/schemas/ErrorEnvelope
+      summary: Resolve and verify organisation scope for a delegated actor
+      description: >
+        Verifies that the actor is a member of the requested organisation and
+        returns a platform-trusted resolved_organisation_uuid. Called by
+        polite-intervention as a mandatory pre-flight step before asserting
+        X-Organisation-Uuid in delegated actor context. Any failure (actor not
+        a member, organisation not visible) produces 404 not_found to preserve
+        non-leakage semantics. The caller must not infer whether an organisation
+        exists from a denial response.
+      tags: [Organisations]
+      parameters:
+        - name: actor_user_uuid
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Internal actor user UUID resolved from the Auth0 token
+        - name: requested_organisation_uuid
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: >
+            Client-supplied organisation UUID to verify. Untrusted — this
+            endpoint performs the membership check that elevates it to a
+            platform-trusted resolved_organisation_uuid.
+      responses:
+        "200":
+          description: Actor is a member; organisation scope resolved
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [resolved_organisation_uuid]
+                properties:
+                  resolved_organisation_uuid:
+                    type: string
+                    format: uuid
+                    description: >
+                      Platform-trusted organisation UUID. Echoes the input
+                      after membership is verified. polite-intervention places
+                      this value in X-Organisation-Uuid for delegated actor context.
+        "400":
+          $ref: "components/errors.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "components/errors.yaml#/components/responses/Unauthenticated"
+        "404":
+          $ref: "components/errors.yaml#/components/responses/NotFound"
+        "500":
+          $ref: "components/errors.yaml#/components/responses/InternalError"
+
   /permissions/check:
     post:
       operationId: checkPermission

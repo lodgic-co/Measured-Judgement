@@ -1,0 +1,62 @@
+procedure_name: ResolveOrganisationScope
+procedure_kind: domain
+identifier_mode: boundary_resolving
+owning_service: measured-judgement
+purpose: >
+  Verify that the actor is a member of the requested organisation and return
+  a platform-trusted resolved_organisation_uuid. This is the organisation scope
+  resolution authority — polite-intervention calls this endpoint as a mandatory
+  pre-flight step before asserting X-Organisation-Uuid in delegated actor context.
+
+  The procedure elevates the trust level of a client-supplied organisation UUID
+  from untrusted (X-Requested-Organisation-Uuid) to platform-asserted
+  (X-Organisation-Uuid) by verifying actor membership. The returned UUID echoes
+  the input after verification; it is not transformed.
+
+source_files:
+  - src/domain/procedures.ts
+  - src/routes/organisations.ts
+caller_context: >
+  Called by polite-intervention via GET /organisations/resolve-scope before
+  constructing delegated actor context for organisation-scoped downstream calls.
+  Both actor_user_uuid (resolved identity) and requested_organisation_uuid
+  (client-supplied, unverified) are required. This call occurs after identity
+  resolution and before routing resolution and downstream delegation.
+inputs:
+  - actorUserUuid (string UUID, required — platform-resolved actor identity)
+  - requestedOrganisationUuid (string UUID, required — client-supplied, unverified)
+outputs:
+  - resolved_organisation_uuid (string UUID — echoes requestedOrganisationUuid
+    after membership is verified; trust level elevated to platform-asserted)
+preconditions:
+  - actorUserUuid and requestedOrganisationUuid must be syntactically valid UUIDs
+    (enforced by Zod schema at the HTTP boundary before this procedure is called).
+decision_logic:
+  - Delegate to AssertOrganisationMembership(pool, requestedOrganisationUuid, actorUserUuid).
+  - AssertOrganisationMembership queries users and user_organisations tables.
+  - On success (actor is a member), return { resolved_organisation_uuid: requestedOrganisationUuid }.
+  - On any failure, AssertOrganisationMembership throws NotFound (non-leakage).
+    The failure path does not distinguish "organisation not found" from "actor not a member".
+non_leakage_invariant: >
+  All failure modes surface as not_found (404). The caller must not infer whether
+  an organisation exists from a denial response.
+error_behaviour:
+  - invalid_request (400): malformed UUID in query parameters (boundary validation).
+  - not_found (404): actor is not a member of the organisation, or the organisation
+    is not visible. Non-leakage — response is identical for both cases.
+  - unauthenticated (401): missing or invalid service token.
+scoping_constraints:
+  - Operates on measured_judgement.users and measured_judgement.user_organisations.
+  - Does not evaluate permissions — membership verification only.
+  - Does not return internal IDs; returns only the platform-trusted UUID.
+data_dependencies:
+  - measured_judgement.users (uuid)
+  - measured_judgement.user_organisations (organisation_uuid, user_id)
+side_effects: none
+related_procedures:
+  - AssertOrganisationMembership (internal — called by this procedure)
+related_governance:
+  - rules/platform-rules/contracts/delegated-actor-context.yaml
+  - rules/platform-rules/rules/platform/M16-platform-delegated-actor-context-contract.yaml
+  - rules/platform-rules/rules/platform/M29-platform-permission-and-identity-authority-boundary.yaml
+  - rules/platform-rules/rules/implementation/I02-impl-edge-auth-and-internal-service-identity-pattern.yaml

@@ -189,6 +189,32 @@ export async function AssertOrganisationMembership(
 }
 
 // ---------------------------------------------------------------------------
+// Organisation Scope Resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolves and verifies organisation scope for a delegated actor.
+ *
+ * Wraps AssertOrganisationMembership and returns the platform-trusted
+ * resolved_organisation_uuid after membership is verified. The returned UUID
+ * echoes the input after verification — the value is not transformed, only
+ * its trust level is elevated from client-supplied to platform-asserted.
+ *
+ * Throws NotFound (404) for any failure mode to preserve non-leakage
+ * semantics: the caller cannot distinguish a missing organisation from a
+ * non-member. Called by polite-intervention as a mandatory pre-flight step
+ * before asserting X-Organisation-Uuid in delegated actor context.
+ */
+export async function ResolveOrganisationScope(
+  pool: Pool,
+  actorUserUuid: string,
+  requestedOrganisationUuid: string,
+): Promise<{ resolved_organisation_uuid: string }> {
+  await AssertOrganisationMembership(pool, requestedOrganisationUuid, actorUserUuid);
+  return { resolved_organisation_uuid: requestedOrganisationUuid };
+}
+
+// ---------------------------------------------------------------------------
 // Permission Evaluation
 // ---------------------------------------------------------------------------
 

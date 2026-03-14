@@ -83,16 +83,3 @@ describe('parseAllowedAzp', () => {
   });
 });
 
-describe('config validation - INTERNAL_SERVICE_SECRET', () => {
-  it('succeeds when INTERNAL_SERVICE_SECRET is missing', () => {
-    const data = { ...MINIMAL_ENV };
-    delete data['INTERNAL_SERVICE_SECRET'];
-    expect(() => parseConfig(data)).not.toThrow();
-  });
-
-  it('parses INTERNAL_SERVICE_SECRET when provided', () => {
-    const data = { ...MINIMAL_ENV, INTERNAL_SERVICE_SECRET: 'test-secret' };
-    const result = parseConfig(data) as Record<string, unknown>;
-    expect(result['INTERNAL_SERVICE_SECRET']).toBe('test-secret');
-  });
-});

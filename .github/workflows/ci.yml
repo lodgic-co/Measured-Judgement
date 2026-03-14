@@ -39,7 +39,6 @@ jobs:
       SYSTEM_DEFAULT_LANGUAGE: en
       SYSTEM_DEFAULT_LOCALE: en-AU
       SYSTEM_DEFAULT_TIMEZONE: UTC
-      INTERNAL_SERVICE_SECRET: ci-internal-secret
       LOG_LEVEL: silent
       OTEL_EXPORTER_OTLP_ENDPOINT: ""
       NODE_ENV: test

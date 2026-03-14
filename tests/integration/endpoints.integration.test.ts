@@ -1,9 +1,14 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import supertest from 'supertest';
 import type { FastifyInstance } from 'fastify';
 import pg from 'pg';
 
-const INTERNAL_SECRET = process.env['INTERNAL_SERVICE_SECRET'] ?? 'test-internal-secret';
+vi.mock('jose', () => ({
+  createRemoteJWKSet: vi.fn().mockReturnValue({}),
+  jwtVerify: vi.fn().mockResolvedValue({ payload: { sub: 'svc|test', azp: 'test-client' } }),
+}));
+
+const AUTH_HEADER = 'Bearer test-token';
 
 const ORG_UUID = '11111111-1111-4111-a111-111111111111';
 const USER1_UUID = '22222222-2222-4222-a222-222222222222';
@@ -179,17 +184,9 @@ describe('measured-judgement endpoint integration tests', () => {
   });
 
   describe('GET /identity/resolve', () => {
-    it('returns 401 when X-Internal-Secret is missing', async () => {
+    it('returns 401 when no Authorization header is provided', async () => {
       const res = await request
         .get('/identity/resolve?provider=auth0&external_subject=auth0|dev-happy-path');
-      expect(res.status).toBe(401);
-      expectEnvelope(res.body, 401, 'unauthenticated');
-    });
-
-    it('returns 401 when X-Internal-Secret is wrong', async () => {
-      const res = await request
-        .get('/identity/resolve?provider=auth0&external_subject=auth0|dev-happy-path')
-        .set('X-Internal-Secret', 'wrong-secret');
       expect(res.status).toBe(401);
       expectEnvelope(res.body, 401, 'unauthenticated');
     });
@@ -197,7 +194,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 400 invalid_request when no query params provided', async () => {
       const res = await request
         .get('/identity/resolve')
-        .set('X-Internal-Secret', INTERNAL_SECRET);
+        .set('Authorization', AUTH_HEADER);
       expect(res.status).toBe(400);
       expectEnvelope(res.body, 400, 'invalid_request');
     });
@@ -205,7 +202,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 400 invalid_request when provider is missing', async () => {
       const res = await request
         .get('/identity/resolve?external_subject=auth0|dev-happy-path')
-        .set('X-Internal-Secret', INTERNAL_SECRET);
+        .set('Authorization', AUTH_HEADER);
       expect(res.status).toBe(400);
       expectEnvelope(res.body, 400, 'invalid_request');
     });
@@ -213,7 +210,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 400 invalid_request when external_subject is empty', async () => {
       const res = await request
         .get('/identity/resolve?provider=auth0&external_subject=')
-        .set('X-Internal-Secret', INTERNAL_SECRET);
+        .set('Authorization', AUTH_HEADER);
       expect(res.status).toBe(400);
       expectEnvelope(res.body, 400, 'invalid_request');
     });
@@ -221,7 +218,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 404 not_found when mapping not found', async () => {
       const res = await request
         .get('/identity/resolve?provider=auth0&external_subject=nonexistent')
-        .set('X-Internal-Secret', INTERNAL_SECRET);
+        .set('Authorization', AUTH_HEADER);
       expect(res.status).toBe(404);
       expectEnvelope(res.body, 404, 'not_found');
     });
@@ -229,7 +226,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 404 not_found when mapping is revoked', async () => {
       const res = await request
         .get('/identity/resolve?provider=auth0&external_subject=auth0|revoked-identity')
-        .set('X-Internal-Secret', INTERNAL_SECRET);
+        .set('Authorization', AUTH_HEADER);
       expect(res.status).toBe(404);
       expectEnvelope(res.body, 404, 'not_found');
     });
@@ -237,7 +234,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 200 with actor_user_uuid when mapping exists', async () => {
       const res = await request
         .get('/identity/resolve?provider=auth0&external_subject=auth0|dev-happy-path')
-        .set('X-Internal-Secret', INTERNAL_SECRET);
+        .set('Authorization', AUTH_HEADER);
       expect(res.status).toBe(200);
       expect(res.body.actor_user_uuid).toBe(USER1_UUID);
     });
@@ -245,7 +242,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('resolves google-oauth2 split subject to correct user uuid', async () => {
       const res = await request
         .get('/identity/resolve?provider=google-oauth2&external_subject=107951601874477150705')
-        .set('X-Internal-Secret', INTERNAL_SECRET);
+        .set('Authorization', AUTH_HEADER);
       expect(res.status).toBe(200);
       expect(res.body.actor_user_uuid).toBe(USER1_UUID);
     });
@@ -253,7 +250,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('resolves google-oauth2 full sub to correct user uuid', async () => {
       const res = await request
         .get('/identity/resolve?provider=google-oauth2&external_subject=google-oauth2|107951601874477150705')
-        .set('X-Internal-Secret', INTERNAL_SECRET);
+        .set('Authorization', AUTH_HEADER);
       expect(res.status).toBe(200);
       expect(res.body.actor_user_uuid).toBe(USER1_UUID);
     });
@@ -263,7 +260,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 400 invalid_request when actor headers missing', async () => {
       const res = await request
         .get('/users/me/preferences')
-        .set('X-Internal-Secret', INTERNAL_SECRET);
+        .set('Authorization', AUTH_HEADER);
       expect(res.status).toBe(400);
       expectEnvelope(res.body, 400, 'invalid_request');
     });
@@ -271,7 +268,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 400 invalid_request when actor type is not user', async () => {
       const res = await request
         .get('/users/me/preferences')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-Type', 'anonymous');
       expect(res.status).toBe(400);
       expectEnvelope(res.body, 400, 'invalid_request');
@@ -280,7 +277,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 400 invalid_request when actor uuid is not a valid UUID', async () => {
       const res = await request
         .get('/users/me/preferences')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', 'not-a-uuid')
         .set('X-Actor-Type', 'user');
       expect(res.status).toBe(400);
@@ -290,7 +287,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 404 not_found for unknown actor_user_uuid', async () => {
       const res = await request
         .get('/users/me/preferences')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', 'aaaaaaaa-bbbb-4ccc-addd-eeeeeeeeeeee')
         .set('X-Actor-Type', 'user');
       expect(res.status).toBe(404);
@@ -300,7 +297,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 200 with user preferences (explicit values)', async () => {
       const res = await request
         .get('/users/me/preferences')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', USER1_UUID)
         .set('X-Actor-Type', 'user');
       expect(res.status).toBe(200);
@@ -312,7 +309,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 200 with system defaults when user prefs are null', async () => {
       const res = await request
         .get('/users/me/preferences')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', USER2_UUID)
         .set('X-Actor-Type', 'user');
       expect(res.status).toBe(200);
@@ -326,7 +323,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 400 invalid_request when body is missing', async () => {
       const res = await request
         .post('/permissions/check')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', USER1_UUID)
         .set('X-Actor-Type', 'user');
       expect(res.status).toBe(400);
@@ -336,7 +333,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 400 invalid_request when permission_key is missing', async () => {
       const res = await request
         .post('/permissions/check')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', USER1_UUID)
         .set('X-Actor-Type', 'user')
         .send({ actor_user_uuid: USER1_UUID, organisation_uuid: ORG_UUID });
@@ -347,7 +344,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 200 allowed:false when user is not a member', async () => {
       const res = await request
         .post('/permissions/check')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', OUTSIDER_UUID)
         .set('X-Actor-Type', 'user')
         .send({
@@ -362,7 +359,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 200 allowed:false when user lacks the permission', async () => {
       const res = await request
         .post('/permissions/check')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', USER2_UUID)
         .set('X-Actor-Type', 'user')
         .send({
@@ -377,7 +374,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 200 allowed:true when user has the permission', async () => {
       const res = await request
         .post('/permissions/check')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', USER1_UUID)
         .set('X-Actor-Type', 'user')
         .send({
@@ -392,7 +389,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 200 allowed:true for rate_plans.view permission (org-scoped)', async () => {
       const res = await request
         .post('/permissions/check')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', USER1_UUID)
         .set('X-Actor-Type', 'user')
         .send({
@@ -407,7 +404,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 400 for unknown permission key', async () => {
       const res = await request
         .post('/permissions/check')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', USER1_UUID)
         .set('X-Actor-Type', 'user')
         .send({
@@ -422,7 +419,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('non-leakage: returns 200 allowed:false for unknown organisation (not 404)', async () => {
       const res = await request
         .post('/permissions/check')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', USER1_UUID)
         .set('X-Actor-Type', 'user')
         .send({
@@ -437,7 +434,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 400 scope_mismatch when org-scoped permission is sent with property_uuids', async () => {
       const res = await request
         .post('/permissions/check')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', USER1_UUID)
         .set('X-Actor-Type', 'user')
         .send({
@@ -453,7 +450,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 400 scope_mismatch when property-scoped permission is sent without property_uuids', async () => {
       const res = await request
         .post('/permissions/check')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', USER1_UUID)
         .set('X-Actor-Type', 'user')
         .send({
@@ -468,7 +465,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 200 allowed:true for property-scoped permission when user has all_properties scope', async () => {
       const res = await request
         .post('/permissions/check')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', USER1_UUID)
         .set('X-Actor-Type', 'user')
         .send({
@@ -484,7 +481,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 200 allowed:false for property-scoped permission when user is member but lacks the permission', async () => {
       const res = await request
         .post('/permissions/check')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', USER2_UUID)
         .set('X-Actor-Type', 'user')
         .send({
@@ -500,7 +497,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 400 invalid_property when property_uuid is not registered in routing directory', async () => {
       const res = await request
         .post('/permissions/check')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', USER1_UUID)
         .set('X-Actor-Type', 'user')
         .send({
@@ -518,7 +515,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 400 invalid_request when organisation_uuid missing', async () => {
       const res = await request
         .get('/routing/authority-instance')
-        .set('X-Internal-Secret', INTERNAL_SECRET);
+        .set('Authorization', AUTH_HEADER);
       expect(res.status).toBe(400);
       expectEnvelope(res.body, 400, 'invalid_request');
     });
@@ -526,7 +523,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 404 not_found when no assignment for organisation', async () => {
       const res = await request
         .get('/routing/authority-instance?organisation_uuid=aaaaaaaa-bbbb-4ccc-addd-eeeeeeeeeeee')
-        .set('X-Internal-Secret', INTERNAL_SECRET);
+        .set('Authorization', AUTH_HEADER);
       expect(res.status).toBe(404);
       expectEnvelope(res.body, 404, 'not_found');
     });
@@ -534,7 +531,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 200 with authority_instance_id and base_url for known organisation', async () => {
       const res = await request
         .get(`/routing/authority-instance?organisation_uuid=${ORG_UUID}`)
-        .set('X-Internal-Secret', INTERNAL_SECRET);
+        .set('Authorization', AUTH_HEADER);
       expect(res.status).toBe(200);
       expect(res.body.authority_instance_id).toBe(AUTHORITY_INSTANCE_ID);
       expect(res.body.base_url).toBe('https://considered-response.internal');
@@ -545,7 +542,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 400 when property_uuid is missing', async () => {
       const res = await request
         .get('/routing/operational-grace')
-        .set('X-Internal-Secret', INTERNAL_SECRET);
+        .set('Authorization', AUTH_HEADER);
       expect(res.status).toBe(400);
       expectEnvelope(res.body, 400, 'invalid_request');
     });
@@ -553,7 +550,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 400 when property_uuid is not a valid UUID', async () => {
       const res = await request
         .get('/routing/operational-grace?property_uuid=not-a-uuid')
-        .set('X-Internal-Secret', INTERNAL_SECRET);
+        .set('Authorization', AUTH_HEADER);
       expect(res.status).toBe(400);
       expectEnvelope(res.body, 400, 'invalid_request');
     });
@@ -561,7 +558,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 404 when no assignment exists for property', async () => {
       const res = await request
         .get(`/routing/operational-grace?property_uuid=${UNREGISTERED_PROP_UUID}`)
-        .set('X-Internal-Secret', INTERNAL_SECRET);
+        .set('Authorization', AUTH_HEADER);
       expect(res.status).toBe(404);
       expectEnvelope(res.body, 404, 'not_found');
     });
@@ -569,7 +566,7 @@ describe('measured-judgement endpoint integration tests', () => {
     it('returns 200 with authority_instance_id and base_url for known property', async () => {
       const res = await request
         .get(`/routing/operational-grace?property_uuid=${PROP1_UUID}`)
-        .set('X-Internal-Secret', INTERNAL_SECRET);
+        .set('Authorization', AUTH_HEADER);
       expect(res.status).toBe(200);
       expect(res.body.authority_instance_id).toBe(OG_INSTANCE_ID);
       expect(res.body.base_url).toBe('https://operational-grace.internal');
@@ -586,7 +583,7 @@ describe('measured-judgement endpoint integration tests', () => {
       const otherOrgUuid = 'bbbbbbbb-cccc-dddd-eeee-ffffffffffff';
       const res = await request
         .post('/permissions/check')
-        .set('X-Internal-Secret', INTERNAL_SECRET)
+        .set('Authorization', AUTH_HEADER)
         .set('X-Actor-User-Uuid', USER1_UUID)
         .set('X-Actor-Type', 'user')
         .send({

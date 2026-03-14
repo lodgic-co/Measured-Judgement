@@ -3,12 +3,16 @@ import type { FastifyInstance } from 'fastify';
 
 const USER_UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
 const ORG_UUID = '11111111-1111-4111-a111-111111111111';
-const INTERNAL_SECRET = 'test-internal-secret';
 
 const mockQuery = vi.hoisted(() => vi.fn());
 
 vi.mock('../../src/db/pool.js', () => ({
   pool: { query: mockQuery },
+}));
+
+vi.mock('jose', () => ({
+  createRemoteJWKSet: vi.fn().mockReturnValue({}),
+  jwtVerify: vi.fn().mockResolvedValue({ payload: { sub: 'svc|test', azp: 'test-m2m-client' } }),
 }));
 
 let app: FastifyInstance;
@@ -36,7 +40,7 @@ describe('GET /organisations/resolve-scope', () => {
     const resp = await app.inject({
       method: 'GET',
       url: `/organisations/resolve-scope?actor_user_uuid=${USER_UUID}&requested_organisation_uuid=${ORG_UUID}`,
-      headers: { 'x-internal-secret': INTERNAL_SECRET },
+      headers: { authorization: 'Bearer test-token' },
     });
 
     expect(resp.statusCode).toBe(200);
@@ -51,7 +55,7 @@ describe('GET /organisations/resolve-scope', () => {
     const resp = await app.inject({
       method: 'GET',
       url: `/organisations/resolve-scope?actor_user_uuid=${USER_UUID}&requested_organisation_uuid=${ORG_UUID}`,
-      headers: { 'x-internal-secret': INTERNAL_SECRET },
+      headers: { authorization: 'Bearer test-token' },
     });
 
     expect(resp.statusCode).toBe(404);
@@ -64,7 +68,7 @@ describe('GET /organisations/resolve-scope', () => {
     const resp = await app.inject({
       method: 'GET',
       url: `/organisations/resolve-scope?actor_user_uuid=${USER_UUID}&requested_organisation_uuid=${ORG_UUID}`,
-      headers: { 'x-internal-secret': INTERNAL_SECRET },
+      headers: { authorization: 'Bearer test-token' },
     });
 
     expect(resp.statusCode).toBe(404);
@@ -75,7 +79,7 @@ describe('GET /organisations/resolve-scope', () => {
     const resp = await app.inject({
       method: 'GET',
       url: `/organisations/resolve-scope?actor_user_uuid=not-a-uuid&requested_organisation_uuid=${ORG_UUID}`,
-      headers: { 'x-internal-secret': INTERNAL_SECRET },
+      headers: { authorization: 'Bearer test-token' },
     });
 
     expect(resp.statusCode).toBe(400);
@@ -86,7 +90,7 @@ describe('GET /organisations/resolve-scope', () => {
     const resp = await app.inject({
       method: 'GET',
       url: `/organisations/resolve-scope?actor_user_uuid=${USER_UUID}&requested_organisation_uuid=not-a-uuid`,
-      headers: { 'x-internal-secret': INTERNAL_SECRET },
+      headers: { authorization: 'Bearer test-token' },
     });
 
     expect(resp.statusCode).toBe(400);

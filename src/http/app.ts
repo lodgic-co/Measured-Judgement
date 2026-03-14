@@ -7,7 +7,6 @@ import { usersRoutes } from '../routes/users.js';
 import { routingRoutes } from '../routes/routing.js';
 import { permissionsRoutes } from '../routes/permissions.js';
 import { organisationsRoutes } from '../routes/organisations.js';
-import { verifyInternalSecret } from '../auth/verify-internal-secret.js';
 import { verifyServiceToken } from '../auth/verify-token.js';
 import { registerRequestId, registerCorrelationHeader, registerErrorHandler } from './error-handler.js';
 
@@ -34,10 +33,7 @@ export function createApp() {
         { request_id: request.requestId, method: request.method, path: request.url },
         'incoming_request',
       );
-      const internalAuthenticated = verifyInternalSecret(request, reply);
-      if (!internalAuthenticated) {
-        await verifyServiceToken(request, reply);
-      }
+      await verifyServiceToken(request, reply);
     }
   });
 

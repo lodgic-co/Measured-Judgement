@@ -16,7 +16,6 @@ export const configSchema = {
     'SYSTEM_DEFAULT_TIMEZONE',
   ],
   properties: {
-    INTERNAL_SERVICE_SECRET: { type: 'string' as const },
     PORT: { type: 'number' as const, default: 5001 },
     LOG_LEVEL: {
       type: 'string' as const,
@@ -49,7 +48,6 @@ export const configSchema = {
 };
 
 export interface AppConfig {
-  INTERNAL_SERVICE_SECRET: string | undefined;
   PORT: number;
   LOG_LEVEL: string;
   NODE_ENV: string;
@@ -121,7 +119,6 @@ const resolvedJwksUri = resolveAlias(raw, 'AUTH0_JWKS_URI', 'JWKS_URL', 'JWKS en
 
 export const config: AppConfig = {
   ...(raw as unknown as AppConfig),
-  INTERNAL_SERVICE_SECRET: (raw as Record<string, unknown>).INTERNAL_SERVICE_SECRET as string | undefined,
   AUTH0_ISSUER: resolvedIssuer,
   AUTH0_JWKS_URI: resolvedJwksUri,
 };
@@ -137,17 +134,5 @@ export const allowedAzpList: readonly string[] = (() => {
 export function emitDeprecationWarnings(log: { warn: (msg: string) => void }): void {
   for (const msg of deprecationWarnings) {
     log.warn(msg);
-  }
-
-  if (config.INTERNAL_SERVICE_SECRET && config.NODE_ENV !== 'development' && config.NODE_ENV !== 'test') {
-    log.warn(
-      'INTERNAL_SERVICE_SECRET is set but NODE_ENV is not development or test — secret will be ignored.',
-    );
-  }
-
-  if (config.NODE_ENV === 'development' && config.INTERNAL_SERVICE_SECRET) {
-    log.warn(
-      'INTERNAL_SERVICE_SECRET is active (dev mode). Temporary safeguard — remove once network isolation is in place.',
-    );
   }
 }

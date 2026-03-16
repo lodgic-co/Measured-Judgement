@@ -1,0 +1,67 @@
+procedure_name: ValidatePropertyOrganisationScope
+procedure_kind: domain
+identifier_mode: boundary_resolving
+owning_service: measured-judgement
+purpose: >
+  Validate that a property_uuid belongs to the given organisation_uuid by
+  querying the organisation_properties authority record. This is the platform
+  authority for the property→organisation ownership fact. Returns void on
+  success. Throws NotFound for all denial cases (non-leakage invariant).
+
+  This is structural scope validation — it asserts an ownership fact, not a
+  permission. Called by polite-intervention's assertPropertyBelongsToOrganisation
+  procedure as an explicit pre-forward step on all PI property-scoped routes.
+
+source_files:
+  - src/domain/procedures.ts
+  - src/routes/properties.ts
+caller_context: >
+  Called by polite-intervention via GET /properties/validate-scope. Both
+  property_uuid and organisation_uuid are required query parameters, validated
+  by Zod at the HTTP boundary before the procedure is invoked. This call
+  occurs after actor identity resolution and organisation scope resolution,
+  before routing resolution and downstream delegation.
+inputs:
+  - pool (Pool — injected database connection)
+  - propertyUuid (string UUID, required)
+  - organisationUuid (string UUID, required)
+outputs: void (throws on all non-success paths)
+preconditions:
+  - propertyUuid and organisationUuid must be non-empty strings (enforced by
+    the procedure itself — 400 on empty values). UUID format is enforced by
+    Zod at the HTTP boundary before the procedure is called.
+decision_logic:
+  - Throw InvalidRequest if propertyUuid is empty.
+  - Throw InvalidRequest if organisationUuid is empty.
+  - Query: SELECT 1 FROM measured_judgement.organisation_properties
+           WHERE property_uuid = $1::uuid AND organisation_uuid = $2::uuid LIMIT 1.
+  - If rows.length === 0, throw NotFound() — no message, non-leakage.
+  - If rows.length > 0, return void (success).
+non_leakage_invariant: >
+  Both "property not registered in organisation_properties" and "property
+  registered to a different organisation" surface as not_found (404) with no
+  distinguishing message. The caller cannot determine which case applies.
+error_behaviour:
+  - invalid_request (400): propertyUuid or organisationUuid is empty string.
+  - not_found (404): no row in organisation_properties matches both
+    property_uuid = propertyUuid AND organisation_uuid = organisationUuid.
+    Covers property-not-found and property-in-wrong-org identically.
+  - unauthenticated (401): missing or invalid service token (boundary check).
+  - internal_error (500): unexpected database failure (error-handler catches).
+scoping_constraints:
+  - Queries measured_judgement.organisation_properties only.
+  - Does not query property_authority_assignments (routing table — separate concern).
+  - Does not evaluate permissions — ownership assertion only.
+  - Does not return internal IDs; returns nothing on success.
+data_dependencies:
+  - measured_judgement.organisation_properties (property_uuid, organisation_uuid)
+side_effects: none
+related_procedures:
+  - ResolveOperationalGraceInstance (independent routing resolution, different table)
+  - ResolveOrganisationScope (organisation membership — different fact)
+related_governance:
+  - rules/platform-rules/rules/platform/M18-platform-non-leakage-and-default-deny-contract.yaml
+  - rules/platform-rules/rules/platform/M29-platform-permission-and-identity-authority-boundary.yaml
+  - rules/platform-rules/rules/platform/M36-platform-http-boundary-domain-logic-separation.yaml
+  - proposals/mj-property-org-scope-validation.yaml
+  - proposals/inventory_influencing_writes_round_one.yaml (amendment: explicit-property-org-scope-validation)

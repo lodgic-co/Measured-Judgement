@@ -1,0 +1,64 @@
+id: organisation_properties
+entity_name: organisation_properties
+owning_service: measured-judgement
+persistence_object: measured_judgement.organisation_properties
+tenant_scope: service-global
+mutability: mutable
+primary_key: [id]
+unique_constraints:
+  - [property_uuid]
+cross_service_references:
+  - column: property_uuid
+    references_service: considered-response
+    references_entity: properties
+    reference_mode: uuid_fk
+    notes: >
+      No database-level FK. Cross-service reference by UUID. Each property
+      belongs to exactly one organisation (UNIQUE on property_uuid).
+  - column: organisation_uuid
+    references_service: considered-response
+    references_entity: organisations
+    reference_mode: uuid_fk
+    notes: >
+      No database-level FK. Cross-service reference by UUID. An organisation
+      may own multiple properties.
+fields:
+  - name: id
+    type: integer
+    nullable: false
+    notes: Identity primary key, generated always.
+  - name: organisation_uuid
+    type: uuid
+    nullable: false
+    notes: The owning organisation. Indexed for lookups by organisation.
+  - name: property_uuid
+    type: uuid
+    nullable: false
+    notes: The owned property. UNIQUE — a property belongs to exactly one organisation.
+  - name: created_at
+    type: timestamptz
+    nullable: false
+    default: now()
+  - name: updated_at
+    type: timestamptz
+    nullable: false
+    default: now()
+    notes: Maintained by trg_organisation_properties_set_updated_at trigger.
+indexes:
+  - name: idx_organisation_properties_org_uuid
+    columns: [organisation_uuid]
+    purpose: >
+      Supports lookups of all properties owned by an organisation.
+notes: >
+  Dedicated authority record for the property→organisation ownership
+  relationship. This table is distinct from property_authority_assignments,
+  which records routing facts (which OG instance serves a property). Routing
+  and ownership are different facts and must not share a table.
+
+  This is the source of truth for GET /properties/validate-scope.
+  polite-intervention calls this endpoint to assert property→organisation
+  membership as an explicit named step before forwarding any property-scoped
+  request to a domain service.
+
+  Lifecycle of rows (row creation, reassignment, and deletion flows) is
+  deferred — see lifecycle_deferred in proposals/mj-property-org-scope-validation.yaml.

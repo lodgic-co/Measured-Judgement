@@ -301,6 +301,49 @@ export async function EvaluatePermissionCoverage(
  * The edge does not call this — enforcement occurs in the service that owns
  * the protected domain behaviour.
  */
+// ---------------------------------------------------------------------------
+// Property-to-Organisation Scope Validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Validates that a property_uuid belongs to the given organisation_uuid.
+ *
+ * Queries organisation_properties (the dedicated ownership authority record,
+ * separate from property_authority_assignments). Returns void on success.
+ *
+ * Throws NotFound() — without a distinguishing message — for all denial
+ * cases: "property not registered" and "property registered to a different
+ * organisation" are externally identical (non-leakage invariant).
+ *
+ * This is structural scope validation, not permission evaluation.
+ * Called by polite-intervention's assertPropertyBelongsToOrganisation procedure.
+ */
+export async function ValidatePropertyOrganisationScope(
+  pool: Pool,
+  propertyUuid: string,
+  organisationUuid: string,
+): Promise<void> {
+  if (!propertyUuid || propertyUuid.trim().length === 0) {
+    throw InvalidRequest('property_uuid is required');
+  }
+  if (!organisationUuid || organisationUuid.trim().length === 0) {
+    throw InvalidRequest('organisation_uuid is required');
+  }
+
+  const result = await pool.query(
+    `SELECT 1
+     FROM measured_judgement.organisation_properties
+     WHERE property_uuid = $1::uuid
+       AND organisation_uuid = $2::uuid
+     LIMIT 1`,
+    [propertyUuid, organisationUuid],
+  );
+
+  if (result.rows.length === 0) {
+    throw NotFound();
+  }
+}
+
 export async function CheckPermission(
   pool: Pool,
   actorUserUuid: string,

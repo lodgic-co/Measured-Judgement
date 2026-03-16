@@ -9,6 +9,7 @@ import {
   ResolveOrganisationScope,
   EvaluatePermissionCoverage,
   CheckPermission,
+  ValidatePropertyOrganisationScope,
 } from '../../src/domain/procedures.js';
 
 const USER_UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
@@ -256,5 +257,36 @@ describe('CheckPermission', () => {
     ]);
     const result = await CheckPermission(pool, USER_UUID, ORG_UUID, 'organisation.properties.read');
     expect(result).toEqual({ allowed: true });
+  });
+});
+
+describe('ValidatePropertyOrganisationScope', () => {
+  it('returns void when property_uuid and organisation_uuid match a row', async () => {
+    const pool = makePool([{ rows: [{ '?column?': 1 }] }]);
+    await expect(ValidatePropertyOrganisationScope(pool, PROP_UUID, ORG_UUID)).resolves.toBeUndefined();
+  });
+
+  it('throws NotFound when no matching row exists', async () => {
+    const pool = makePool([{ rows: [] }]);
+    await expect(ValidatePropertyOrganisationScope(pool, PROP_UUID, ORG_UUID)).rejects.toMatchObject({
+      status: 404,
+      code: 'not_found',
+    });
+  });
+
+  it('throws InvalidRequest when property_uuid is empty', async () => {
+    const pool = makePool([]);
+    await expect(ValidatePropertyOrganisationScope(pool, '', ORG_UUID)).rejects.toMatchObject({
+      status: 400,
+      code: 'invalid_request',
+    });
+  });
+
+  it('throws InvalidRequest when organisation_uuid is empty', async () => {
+    const pool = makePool([]);
+    await expect(ValidatePropertyOrganisationScope(pool, PROP_UUID, '')).rejects.toMatchObject({
+      status: 400,
+      code: 'invalid_request',
+    });
   });
 });

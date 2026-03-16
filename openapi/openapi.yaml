@@ -353,6 +353,65 @@ paths:
         "500":
           $ref: "components/errors.yaml#/components/responses/InternalError"
 
+  /properties/validate-scope:
+    get:
+      operationId: validatePropertyOrganisationScope
+      x-auth-mode: bearer
+      x-tenant-scope: organisation
+      x-public-surface: false
+      x-error-envelope: components/errors.yaml#/components/schemas/ErrorEnvelope
+      summary: Validate that a property belongs to an organisation
+      description: >
+        Validates that the given property_uuid belongs to the given organisation_uuid
+        according to MJ's authoritative organisation_properties record. This is
+        structural scope validation, not permission evaluation. Called by
+        polite-intervention's assertPropertyBelongsToOrganisation procedure as a
+        mandatory pre-forward step on property-scoped routes.
+
+        Returns 200 if the property belongs to the organisation.
+        Returns 404 for both "property not found" and "property belongs to a
+        different organisation" — the caller cannot distinguish the two cases
+        (non-leakage invariant).
+      tags: [Properties]
+      parameters:
+        - name: property_uuid
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The property UUID to validate
+        - name: organisation_uuid
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The organisation UUID to assert ownership against
+      responses:
+        "200":
+          description: Property belongs to the given organisation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [property_uuid, organisation_uuid]
+                properties:
+                  property_uuid:
+                    type: string
+                    format: uuid
+                  organisation_uuid:
+                    type: string
+                    format: uuid
+        "400":
+          $ref: "components/errors.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "components/errors.yaml#/components/responses/Unauthenticated"
+        "404":
+          $ref: "components/errors.yaml#/components/responses/NotFound"
+        "500":
+          $ref: "components/errors.yaml#/components/responses/InternalError"
+
   /permissions/check:
     post:
       operationId: checkPermission

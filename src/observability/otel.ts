@@ -47,6 +47,9 @@ export function initOtel(): void {
     instrumentations: [
       getNodeAutoInstrumentations({
         '@opentelemetry/instrumentation-fs': { enabled: false },
+        '@opentelemetry/instrumentation-http': {
+          ignoreIncomingRequestHook: (req) => req.url?.startsWith('/health') ?? false,
+        },
       }),
     ],
   });

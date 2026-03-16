@@ -153,6 +153,12 @@ async function seedTestData(): Promise<void> {
     VALUES ($1, $2)
     ON CONFLICT (property_uuid) DO UPDATE SET authority_instance_id = EXCLUDED.authority_instance_id
   `, [PROP1_UUID, OG_INSTANCE_ID]);
+
+  await testPool.query(`
+    INSERT INTO measured_judgement.organisation_properties (organisation_uuid, property_uuid)
+    VALUES ($1, $2)
+    ON CONFLICT (property_uuid) DO UPDATE SET organisation_uuid = EXCLUDED.organisation_uuid
+  `, [ORG_UUID, PROP1_UUID]);
 }
 
 function expectEnvelope(body: unknown, expectedStatus: number, expectedCode: string): void {
@@ -583,6 +589,76 @@ describe('measured-judgement endpoint integration tests', () => {
         new (await import('../../src/errors/index.js')).AppError({ status: 401, code: 'unauthenticated', message: 'Unauthorized', retryable: false }),
       );
       const res = await request.get(`/routing/operational-grace?property_uuid=${PROP1_UUID}`);
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe('GET /properties/validate-scope', () => {
+    const OTHER_ORG_UUID = 'bbbbbbbb-cccc-dddd-eeee-ffffffffffff';
+
+    it('returns 200 with property_uuid and organisation_uuid when property belongs to organisation', async () => {
+      const res = await request
+        .get(`/properties/validate-scope?property_uuid=${PROP1_UUID}&organisation_uuid=${ORG_UUID}`)
+        .set('Authorization', AUTH_HEADER);
+      expect(res.status).toBe(200);
+      expect(res.body.property_uuid).toBe(PROP1_UUID);
+      expect(res.body.organisation_uuid).toBe(ORG_UUID);
+    });
+
+    it('returns 404 when property exists but belongs to a different organisation', async () => {
+      const res = await request
+        .get(`/properties/validate-scope?property_uuid=${PROP1_UUID}&organisation_uuid=${OTHER_ORG_UUID}`)
+        .set('Authorization', AUTH_HEADER);
+      expect(res.status).toBe(404);
+      expectEnvelope(res.body, 404, 'not_found');
+    });
+
+    it('returns 404 when property_uuid is not registered in organisation_properties', async () => {
+      const res = await request
+        .get(`/properties/validate-scope?property_uuid=${UNREGISTERED_PROP_UUID}&organisation_uuid=${ORG_UUID}`)
+        .set('Authorization', AUTH_HEADER);
+      expect(res.status).toBe(404);
+      expectEnvelope(res.body, 404, 'not_found');
+    });
+
+    it('returns 400 when property_uuid is a malformed UUID', async () => {
+      const res = await request
+        .get(`/properties/validate-scope?property_uuid=not-a-uuid&organisation_uuid=${ORG_UUID}`)
+        .set('Authorization', AUTH_HEADER);
+      expect(res.status).toBe(400);
+      expectEnvelope(res.body, 400, 'invalid_request');
+    });
+
+    it('returns 400 when organisation_uuid is a malformed UUID', async () => {
+      const res = await request
+        .get(`/properties/validate-scope?property_uuid=${PROP1_UUID}&organisation_uuid=not-a-uuid`)
+        .set('Authorization', AUTH_HEADER);
+      expect(res.status).toBe(400);
+      expectEnvelope(res.body, 400, 'invalid_request');
+    });
+
+    it('returns 400 when property_uuid is missing', async () => {
+      const res = await request
+        .get(`/properties/validate-scope?organisation_uuid=${ORG_UUID}`)
+        .set('Authorization', AUTH_HEADER);
+      expect(res.status).toBe(400);
+      expectEnvelope(res.body, 400, 'invalid_request');
+    });
+
+    it('returns 400 when organisation_uuid is missing', async () => {
+      const res = await request
+        .get(`/properties/validate-scope?property_uuid=${PROP1_UUID}`)
+        .set('Authorization', AUTH_HEADER);
+      expect(res.status).toBe(400);
+      expectEnvelope(res.body, 400, 'invalid_request');
+    });
+
+    it('returns 401 when auth fails', async () => {
+      const { verifyServiceToken } = await import('../../src/auth/verify-token.js');
+      vi.mocked(verifyServiceToken).mockRejectedValueOnce(
+        new (await import('../../src/errors/index.js')).AppError({ status: 401, code: 'unauthenticated', message: 'Unauthorized', retryable: false }),
+      );
+      const res = await request.get(`/properties/validate-scope?property_uuid=${PROP1_UUID}&organisation_uuid=${ORG_UUID}`);
       expect(res.status).toBe(401);
     });
   });

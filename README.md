@@ -97,22 +97,25 @@ This service accepts delegated actor headers forwarded by `polite-intervention`:
 | `GET` | `/health/ready` | None | — | Readiness probe (checks DB connectivity) |
 | `GET` | `/internal/ping` | Token | — | Auth validation proof |
 | `GET` | `/identity/resolve` | Token | — | Resolve `provider` + `external_subject` → `actor_user_uuid` |
-| `POST` | `/organisations/:uuid/permissions/check` | Token | User | Check property-scoped permission coverage |
-| `GET` | `/routing/organisations/:uuid` | Token | — | Resolve `organisation_uuid` → `authority_instance_id` + `base_url` |
+| `GET` | `/organisations/resolve-scope` | Token | — | Verify actor membership and return `resolved_organisation_uuid` |
+| `POST` | `/permissions/check` | Token | User | Check organisation-scoped and property-scoped permission coverage |
+| `GET` | `/routing/authority-instance` | Token | — | Resolve `organisation_uuid` → `authority_instance_id` + `base_url` |
+| `GET` | `/routing/operational-grace` | Token | — | Resolve `property_uuid` → `authority_instance_id` + `base_url` |
+| `GET` | `/users/me/preferences` | Token | User | Resolve user locale preferences (`language`, `locale`, `timezone`) |
 
 ### Identity resolution
 
 `GET /identity/resolve?provider=<provider>&external_subject=<sub>`
 
-Returns `{ actor_user_uuid, authority_instance_id, base_url }` — the resolved user identity and the routing target for that user's authority instance, in one call.
+Returns `{ actor_user_uuid }` — the resolved internal user UUID for the given external identity.
 
 **Failure behaviour:** Unknown `provider + external_subject` returns `404 not_found`. polite-intervention maps this to `401 unauthenticated` (not exposed to clients).
 
 ### Permission checks
 
-`POST /organisations/:uuid/permissions/check`
+`POST /permissions/check`
 
-Body: `{ permission_key, property_uuids? }`
+Body: `{ actor_user_uuid, organisation_uuid, permission_key, property_uuids? }`
 
 Evaluates organisation membership, permission catalogue membership, and optionally property-scoped assignment coverage. Returns `{ allowed, reason? }`.
 
@@ -120,11 +123,33 @@ Evaluates organisation membership, permission catalogue membership, and optional
 
 ### Routing directory
 
-`GET /routing/organisations/:uuid`
+`GET /routing/authority-instance?organisation_uuid=<uuid>`
 
-Returns `{ authority_instance_id, base_url }` for the given `organisation_uuid`. polite-intervention calls this before every organisation-scoped downstream call.
+Returns `{ authority_instance_id, base_url }` for the given `organisation_uuid`. polite-intervention calls this before every organisation-scoped downstream call to `considered-response`.
 
 **Failure behaviour:** Unknown organisation returns `404`. polite-intervention maps this to `502 bad_gateway`.
+
+`GET /routing/operational-grace?property_uuid=<uuid>`
+
+Returns `{ authority_instance_id, base_url }` for the given `property_uuid`. polite-intervention calls this before reservation-scoped downstream calls to `operational-grace`.
+
+**Failure behaviour:** Unknown property returns `404`. polite-intervention maps this to `502 bad_gateway`.
+
+### Organisation scope resolution
+
+`GET /organisations/resolve-scope?actor_user_uuid=<uuid>&requested_organisation_uuid=<uuid>`
+
+Verifies that the actor is a member of the requested organisation. Returns `{ resolved_organisation_uuid }`. polite-intervention calls this before reservation-scoped downstream calls to validate the actor's organisation scope.
+
+**Failure behaviour:** Actor not a member of the organisation returns `403` mapped to `404` by polite-intervention.
+
+### User preferences
+
+`GET /users/me/preferences`
+
+Requires `X-Actor-Type: user` and `X-Actor-User-Uuid`. Resolves the user's locale context from the database. Returns `{ language, locale, timezone }`.
+
+**Failure behaviour:** Missing or invalid actor context returns `400 invalid_request`.
 
 ### Permission Key Catalogue
 

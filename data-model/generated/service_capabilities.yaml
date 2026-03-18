@@ -1,0 +1,50 @@
+id: service_capabilities
+entity_name: service_capabilities
+owning_service: measured-judgement
+persistence_object: measured_judgement.service_capabilities
+tenant_scope: service-global
+mutability: append-only
+primary_key: [id]
+unique_constraints:
+  - [key]
+fields:
+  - name: id
+    type: integer
+    nullable: false
+    notes: Identity primary key, generated always.
+  - name: key
+    type: text
+    nullable: false
+    notes: >
+      Immutable capability key. Format: <domain>.<subdomain>.<action>.
+      Examples: inventory.occupancy.bundle.read, inventory.configuration.bundle.read.
+      UNIQUE. Must not collide with user permission keys.
+  - name: owning_service
+    type: text
+    nullable: false
+    notes: >
+      The service that exposes the route protected by this capability.
+      Used to filter grants at startup by the owning service.
+  - name: description
+    type: text
+    nullable: false
+    default: "''"
+    notes: Human-readable description of the capability.
+  - name: created_at
+    type: timestamptz
+    nullable: false
+    default: now()
+indexes:
+  - name: idx_service_capabilities_owning_service
+    columns: [owning_service]
+    purpose: >
+      Supports GET /service-authorities/grants?owning_service= queries used
+      by owning services at startup to build their capability allowlist.
+notes: >
+  Service capability catalogue. Records named actions that a service is
+  authorised to expose to other services. Capabilities are system-scoped:
+  they have no human actor context and are enforced at route level using
+  a startup-time AZP allowlist derived from service_authority_grants.
+
+  Capability keys are immutable once released and must be distinct from
+  user permission keys (defined in domain/permissions.ts).

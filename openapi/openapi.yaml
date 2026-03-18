@@ -482,6 +482,54 @@ paths:
         "500":
           $ref: "components/errors.yaml#/components/responses/InternalError"
 
+  /service-authorities/grants:
+    get:
+      operationId: getServiceAuthorityGrants
+      x-auth-mode: service_token
+      x-tenant-scope: none
+      x-public-surface: false
+      x-error-envelope: true
+      summary: List service authority grants for an owning service
+      description: >
+        Returns all service authority grants for the specified owning service.
+        Called at startup by owning services (CR, OG) to build their per-capability
+        AZP allowlist. Not publicly accessible.
+      tags: [ServiceAuthority]
+      parameters:
+        - name: owning_service
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The service whose capability grants are being queried
+      responses:
+        "200":
+          description: Service authority grants for the owning service
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [grants]
+                properties:
+                  grants:
+                    type: array
+                    items:
+                      type: object
+                      required: [capability_key, caller_service_id]
+                      properties:
+                        capability_key:
+                          type: string
+                          description: The capability key
+                        caller_service_id:
+                          type: string
+                          description: Auth0 M2M client_id of the authorised caller
+        "400":
+          $ref: "components/errors.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "components/errors.yaml#/components/responses/Unauthenticated"
+        "500":
+          $ref: "components/errors.yaml#/components/responses/InternalError"
+
 components:
   securitySchemes:
     BearerAuth:

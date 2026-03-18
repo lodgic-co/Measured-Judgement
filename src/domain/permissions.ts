@@ -20,6 +20,7 @@ const catalogue: ReadonlyMap<string, PermissionDefinition> = new Map([
   ['financial.folios.view', { key: 'financial.folios.view', scope: 'property' }],
   ['financial.charges.post', { key: 'financial.charges.post', scope: 'property' }],
   ['financial.payments.post', { key: 'financial.payments.post', scope: 'property' }],
+  ['inventory.view', { key: 'inventory.view', scope: 'property' }],
 ]);
 
 export function lookupPermission(permissionKey: string): PermissionDefinition | undefined {

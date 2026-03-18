@@ -1,0 +1,37 @@
+procedure_name: SelectServiceCapabilityGrants
+procedure_kind: domain
+procedure_taxonomy: read
+owning_service: measured-judgement
+purpose: >
+  Return all service authority grants owned by a given owning service.
+  Called at startup by owning services (CR, OG, SC) to build a per-capability
+  AZP allowlist: Map<capability_key, Set<caller_service_id>>.
+source_files:
+  - src/domain/procedures.ts
+  - src/routes/service-authorities.ts
+caller_context: >
+  Called by owning services at startup via GET /service-authorities/grants?owning_service=<name>.
+  Not called at request time. If MJ is unreachable, calling service must fail fast.
+inputs:
+  - owningService (string, required): the service whose grants are being queried
+outputs:
+  - grants: Array<{ capability_key: string; caller_service_id: string }>
+preconditions:
+  - owningService must be a non-empty string (validated at HTTP boundary before calling).
+decision_logic:
+  - Validate owningService is non-empty; throw InvalidRequest if missing.
+  - Query service_authority_grants JOIN service_capabilities
+    WHERE service_capabilities.owning_service = $1.
+  - Order by capability_key, caller_service_id (deterministic).
+  - Return all rows as ServiceCapabilityGrant[].
+  - If no rows: return empty array (not an error — service simply has no grants yet).
+error_behaviour:
+  - invalid_request (400): owningService is missing or empty.
+  - internal_error (500): database failure.
+scoping_constraints:
+  - Operates on the measured_judgement schema.
+  - No cross-service DB access.
+data_dependencies:
+  - measured_judgement.service_authority_grants (capability_key, caller_service_id)
+  - measured_judgement.service_capabilities (key, owning_service)
+side_effects: none

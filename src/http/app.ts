@@ -8,6 +8,7 @@ import { routingRoutes } from '../routes/routing.js';
 import { permissionsRoutes } from '../routes/permissions.js';
 import { organisationsRoutes } from '../routes/organisations.js';
 import { propertiesRoutes } from '../routes/properties.js';
+import { serviceAuthoritiesRoutes } from '../routes/service-authorities.js';
 import { verifyServiceToken } from '../auth/verify-token.js';
 import { registerRequestId, registerCorrelationHeader, registerErrorHandler } from './error-handler.js';
 
@@ -26,6 +27,7 @@ export function createApp() {
   app.register(permissionsRoutes);
   app.register(organisationsRoutes);
   app.register(propertiesRoutes);
+  app.register(serviceAuthoritiesRoutes);
 
   app.addHook('onRequest', async (request, reply) => {
     request.startTime = process.hrtime.bigint();

@@ -11,6 +11,42 @@ import {
 } from '../errors/index.js';
 
 // ---------------------------------------------------------------------------
+// Service Authority Grants
+// ---------------------------------------------------------------------------
+
+export interface ServiceCapabilityGrant {
+  capability_key: string;
+  caller_service_id: string;
+}
+
+/**
+ * Returns all service authority grants owned by the given service.
+ *
+ * Called at startup by owning services to build their per-capability AZP
+ * allowlist (Map<capability_key, Set<azp>>). No caching is applied here —
+ * the caller decides how to store the result.
+ */
+export async function SelectServiceCapabilityGrants(
+  pool: Pool,
+  owningService: string,
+): Promise<ServiceCapabilityGrant[]> {
+  if (!owningService || owningService.trim().length === 0) {
+    throw InvalidRequest('owning_service is required');
+  }
+
+  const result = await pool.query(
+    `SELECT g.capability_key, g.caller_service_id
+     FROM measured_judgement.service_authority_grants g
+     JOIN measured_judgement.service_capabilities c ON c.key = g.capability_key
+     WHERE c.owning_service = $1
+     ORDER BY g.capability_key, g.caller_service_id`,
+    [owningService],
+  );
+
+  return result.rows as ServiceCapabilityGrant[];
+}
+
+// ---------------------------------------------------------------------------
 // Identity Resolution
 // ---------------------------------------------------------------------------
 

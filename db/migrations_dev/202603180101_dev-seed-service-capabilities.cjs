@@ -1,10 +1,10 @@
 // Seeds service capabilities and initial grants for SC → OG and SC → CR.
+// The seed is idempotent (ON CONFLICT DO NOTHING).
 //
-// The SC_M2M_CLIENT_ID placeholder must be replaced with the actual Auth0 M2M
-// client_id created for special-circumstances before this seed is used in
-// an environment where SC is deployed. The seed is idempotent (ON CONFLICT DO NOTHING).
+// SC_M2M_CLIENT_ID can be overridden via environment variable; the default
+// is the known dev Auth0 M2M client ID for special-circumstances.
 
-const SC_M2M_CLIENT_ID = process.env['SC_M2M_CLIENT_ID'] || 'sc-m2m-placeholder';
+const SC_M2M_CLIENT_ID = process.env['SC_M2M_CLIENT_ID'] || '6SYVbgyUFiiYUBUwmm18fS96OLfxopmP';
 
 module.exports.up = (pgm) => {
   pgm.sql(`

@@ -8,7 +8,8 @@
 // CR_M2M_CLIENT_ID can be overridden via environment variable; the default
 // is the known dev Auth0 M2M client ID for considered-response.
 
-const CR_M2M_CLIENT_ID = process.env['CR_M2M_CLIENT_ID'] || 'PLACEHOLDER_CR_CLIENT_ID';
+const CR_M2M_CLIENT_ID =
+  process.env['CR_M2M_CLIENT_ID'] || '7w2Chi9hBPn49vsAerTgN7605dIOgLBX';
 
 module.exports.up = (pgm) => {
   // Register the mode_neutral sub-capability (idempotent with existing ingest capability).

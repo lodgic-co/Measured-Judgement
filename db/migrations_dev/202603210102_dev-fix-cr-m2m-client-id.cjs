@@ -1,8 +1,9 @@
 // Corrects service_authority_grants rows inserted with PLACEHOLDER_CR_CLIENT_ID by
 // 202603210101_dev-seed-cr-sc-ingest-capability.cjs when CR_M2M_CLIENT_ID was not
-// set at seed time.
+// set at seed time. Seeds do not re-run; this migration applies once per database.
 //
-// Sets the real dev Auth0 M2M client ID for considered-response on both SC ingest grants.
+// Pair with 202603210103_dev-ensure-cr-sc-ingest-grants.cjs for idempotent INSERT
+// when UPDATE matches no rows (seeds do not re-run).
 
 const PLACEHOLDER = 'PLACEHOLDER_CR_CLIENT_ID';
 const CR_M2M_CLIENT_ID =

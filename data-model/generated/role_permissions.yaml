@@ -1,3 +1,4 @@
+generated_by: cursor
 id: role_permissions
 entity_name: role_permissions
 owning_service: measured-judgement

@@ -1,3 +1,4 @@
+generated_by: cursor
 id: user_identities
 entity_name: user_identities
 owning_service: measured-judgement

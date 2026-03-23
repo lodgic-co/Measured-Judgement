@@ -190,7 +190,7 @@ All variables are validated at boot. Missing or malformed values cause immediate
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `5100` | Server listen port |
+| `PORT` | `5001` | Server listen port |
 | `LOG_LEVEL` | `info` | Pino log level |
 | `NODE_ENV` | `development` | Environment (`development`, `production`, `test`) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `""` (disabled) | OpenTelemetry OTLP collector endpoint |
@@ -227,8 +227,8 @@ All mutable tables have `updated_at` triggers.
 
 | Command | Purpose |
 |---------|---------|
-| `pnpm db:migrate` | Run pending migrations |
-| `pnpm db:rollback` | Roll back last migration |
+| `pnpm migrate` | Run pending migrations |
+| `pnpm migrate:down` | Roll back last migration |
 | `pnpm db:seed:dev` | Run dev seed data (environment-gated, idempotent) |
 | `pnpm db:create-migration` | Scaffold a new migration file |
 
@@ -255,6 +255,22 @@ Traces, metrics, and logs exported via OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` i
 
 Exactly one structured completion log per request. Includes: `request_id`, `method`, `path`, `status_code`, `duration_ms`, `caller_service_id`, `actor_user_uuid`, `organisation_uuid`, `error_code`.
 
+Production startup from `package.json` is `pnpm start`, which runs:
+
+```bash
+node --import ./dist/observability/otel-preload.js dist/index.js
+```
+
+This preload is the path that activates the OTel SDK before the app entrypoint loads.
+
+Default development startup from `package.json` is:
+
+```bash
+pnpm dev
+```
+
+This runs `tsx watch src/index.ts` and does **not** preload `src/observability/otel-preload.ts`.
+
 ### Structured Logging
 
 - Structured JSON only (pino)
@@ -266,7 +282,7 @@ Exactly one structured completion log per request. Includes: `request_id`, `meth
 ```bash
 pnpm install
 cp .env.example .env
-pnpm db:migrate
+pnpm migrate
 pnpm db:seed:dev
 pnpm dev
 ```
@@ -277,7 +293,7 @@ pnpm dev
 pnpm run ci
 ```
 
-Runs: typecheck → lint → openapi:check → db:migrate → test → build
+Runs: validate-governance-entrypoint → validate-generated-artifact-ownership → typecheck → lint → openapi:check → verify:generated → migrate → test → build
 
 ## Repository structure
 

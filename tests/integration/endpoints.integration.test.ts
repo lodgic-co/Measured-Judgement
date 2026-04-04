@@ -149,6 +149,12 @@ async function seedTestData(): Promise<void> {
   `, [roleId]);
 
   await testPool.query(`
+    INSERT INTO measured_judgement.role_permissions (role_id, permission_key)
+    VALUES ($1, 'pricing.quote')
+    ON CONFLICT (role_id, permission_key) DO NOTHING
+  `, [roleId]);
+
+  await testPool.query(`
     INSERT INTO measured_judgement.property_authority_assignments (property_uuid, authority_instance_id)
     VALUES ($1, $2)
     ON CONFLICT (property_uuid) DO UPDATE SET authority_instance_id = EXCLUDED.authority_instance_id
@@ -483,6 +489,22 @@ describe('measured-judgement endpoint integration tests', () => {
           actor_user_uuid: USER1_UUID,
           organisation_uuid: ORG_UUID,
           permission_key: 'property.configure',
+          property_uuids: [PROP1_UUID],
+        });
+      expect(res.status).toBe(200);
+      expect(res.body.allowed).toBe(true);
+    });
+
+    it('returns 200 allowed:true for pricing.quote when user has property coverage', async () => {
+      const res = await request
+        .post('/permissions/check')
+        .set('Authorization', AUTH_HEADER)
+        .set('X-Actor-User-Uuid', USER1_UUID)
+        .set('X-Actor-Type', 'user')
+        .send({
+          actor_user_uuid: USER1_UUID,
+          organisation_uuid: ORG_UUID,
+          permission_key: 'pricing.quote',
           property_uuids: [PROP1_UUID],
         });
       expect(res.status).toBe(200);

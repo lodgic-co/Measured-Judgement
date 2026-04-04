@@ -234,6 +234,13 @@ describe('EvaluatePermissionCoverage', () => {
       EvaluatePermissionCoverage(pool, 99, 'reservations.view'),
     ).rejects.toMatchObject({ code: 'scope_mismatch' });
   });
+
+  it('treats pricing.quote as property scoped', async () => {
+    const pool = makePool([]);
+    await expect(
+      EvaluatePermissionCoverage(pool, 99, 'pricing.quote'),
+    ).rejects.toMatchObject({ code: 'scope_mismatch' });
+  });
 });
 
 describe('CheckPermission', () => {

@@ -17,6 +17,7 @@ const catalogue: ReadonlyMap<string, PermissionDefinition> = new Map([
   ['rate_plans.view', { key: 'rate_plans.view', scope: 'organisation' }],
   ['rate_plans.values.modify', { key: 'rate_plans.values.modify', scope: 'property' }],
   ['rate_plans.structure.modify', { key: 'rate_plans.structure.modify', scope: 'property' }],
+  ['pricing.quote', { key: 'pricing.quote', scope: 'property' }],
   ['financial.folios.view', { key: 'financial.folios.view', scope: 'property' }],
   ['financial.charges.post', { key: 'financial.charges.post', scope: 'property' }],
   ['financial.payments.post', { key: 'financial.payments.post', scope: 'property' }],

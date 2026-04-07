@@ -24,6 +24,15 @@ let app: FastifyInstance;
 let request: supertest.SuperTest<supertest.Test>;
 let testPool: pg.Pool;
 
+async function resetSeedMemberships(pool: pg.Pool, userIds: number[]): Promise<void> {
+  await pool.query(
+    `DELETE FROM measured_judgement.user_organisations
+     WHERE organisation_uuid = $1::uuid
+       AND user_id = ANY($2::int[])`,
+    [ORG_UUID, userIds],
+  );
+}
+
 async function seedTestData(): Promise<void> {
   const dbUrl = process.env['DATABASE_URL'];
   if (!dbUrl) throw new Error('DATABASE_URL is required for integration tests');
@@ -51,6 +60,10 @@ async function seedTestData(): Promise<void> {
     `SELECT id FROM measured_judgement.users WHERE uuid = $1`, [USER2_UUID],
   );
   const user2Id = user2IdRes.rows[0].id;
+
+  // Reset memberships for the fixed integration-test users so prior runs or
+  // dev-seed fixtures cannot leak role assignments into this suite.
+  await resetSeedMemberships(testPool, [user1Id, user2Id]);
 
   await testPool.query(`
     INSERT INTO measured_judgement.user_identities (user_id, provider, external_subject, revoked_at)

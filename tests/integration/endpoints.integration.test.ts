@@ -111,6 +111,9 @@ async function seedTestData(): Promise<void> {
     `SELECT id FROM measured_judgement.roles WHERE organisation_uuid = $1 AND name = 'Org Admin'`,
     [ORG_UUID],
   );
+  if (roleIdRes.rows.length === 0) {
+    throw new Error('Test setup failed: Org Admin role was not found for organisation.');
+  }
   const roleId = roleIdRes.rows[0].id;
 
   await testPool.query(`

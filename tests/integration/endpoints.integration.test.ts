@@ -35,13 +35,8 @@ async function resetSeedMemberships(pool: pg.Pool, userIds: number[]): Promise<v
   );
 }
 
-async function seedTestData(): Promise<void> {
-  const dbUrl = process.env['DATABASE_URL'];
-  if (!dbUrl) throw new Error('DATABASE_URL is required for integration tests');
-
-  testPool = new pg.Pool({ connectionString: dbUrl });
-
-  await testPool.query(`
+async function seedUsers(pool: pg.Pool): Promise<void> {
+  await pool.query(`
     INSERT INTO measured_judgement.users (uuid, email, name, preferred_language, preferred_locale, preferred_timezone)
     VALUES
       ($1, 'happy@example.com', 'Happy User', 'en', 'en-AU', 'Australia/Sydney'),
@@ -53,6 +48,15 @@ async function seedTestData(): Promise<void> {
       preferred_locale = EXCLUDED.preferred_locale,
       preferred_timezone = EXCLUDED.preferred_timezone
   `, [USER1_UUID, USER2_UUID, OUTSIDER_UUID]);
+}
+
+async function seedTestData(): Promise<void> {
+  const dbUrl = process.env['DATABASE_URL'];
+  if (!dbUrl) throw new Error('DATABASE_URL is required for integration tests');
+
+  testPool = new pg.Pool({ connectionString: dbUrl });
+
+  await seedUsers(testPool);
 
   const user1IdRes = await testPool.query(
     `SELECT id FROM measured_judgement.users WHERE uuid = $1`, [USER1_UUID],
@@ -196,22 +200,48 @@ async function seedTestData(): Promise<void> {
   `, [ORG_UUID, PROP1_UUID]);
 }
 
+interface ErrorDetails {
+  status: number;
+  code: string;
+  message: string;
+  request_id: string;
+  retryable: boolean;
+}
+
+interface ErrorEnvelope {
+  error: ErrorDetails;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object';
+}
+
+function isErrorDetails(value: unknown): value is ErrorDetails {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.status === 'number' &&
+    typeof value.code === 'string' &&
+    typeof value.message === 'string' &&
+    typeof value.request_id === 'string' &&
+    typeof value.retryable === 'boolean'
+  );
+}
+
+function isErrorEnvelope(value: unknown): value is ErrorEnvelope {
+  if (!isRecord(value)) return false;
+  return isErrorDetails(value.error);
+}
+
 function expectEnvelope(body: unknown, expectedStatus: number, expectedCode: string): void {
-  expect(body).not.toBeNull();
-  expect(typeof body).toBe('object');
+  expect(isErrorEnvelope(body)).toBe(true);
+  if (!isErrorEnvelope(body)) return;
 
-  const b = body as Record<string, unknown>;
-  expect('error' in b).toBe(true);
-  expect(b.error).not.toBeNull();
-  expect(typeof b.error).toBe('object');
-
-  const err = b.error as Record<string, unknown>;
-  expect(err.status).toBe(expectedStatus);
-  expect(err.code).toBe(expectedCode);
-  expect(typeof err.message).toBe('string');
-  expect(typeof err.request_id).toBe('string');
-  expect((err.request_id as string).length).toBeGreaterThan(0);
-  expect(typeof err.retryable).toBe('boolean');
+  expect(body.error.status).toBe(expectedStatus);
+  expect(body.error.code).toBe(expectedCode);
+  expect(typeof body.error.message).toBe('string');
+  expect(typeof body.error.request_id).toBe('string');
+  expect(body.error.request_id.length).toBeGreaterThan(0);
+  expect(typeof body.error.retryable).toBe('boolean');
 }
 
 describe('measured-judgement endpoint integration tests', () => {

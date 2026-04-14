@@ -714,7 +714,6 @@ describe('measured-judgement endpoint integration tests', () => {
 
   describe('cross-tenancy isolation on permissions', () => {
     it('returns allowed:false when checking a different org the user is not in', async () => {
-      const otherOrgUuid = 'bbbbbbbb-cccc-dddd-eeee-ffffffffffff';
       const res = await request
         .post('/permissions/check')
         .set('Authorization', AUTH_HEADER)
@@ -722,7 +721,7 @@ describe('measured-judgement endpoint integration tests', () => {
         .set('X-Actor-Type', 'user')
         .send({
           actor_user_uuid: USER1_UUID,
-          organisation_uuid: otherOrgUuid,
+          organisation_uuid: OTHER_ORG_UUID,
           permission_key: 'organisation.properties.read',
         });
       expect(res.status).toBe(200);

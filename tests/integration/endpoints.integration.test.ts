@@ -55,10 +55,16 @@ async function seedTestData(): Promise<void> {
   const user1IdRes = await testPool.query(
     `SELECT id FROM measured_judgement.users WHERE uuid = $1`, [USER1_UUID],
   );
+  if (user1IdRes.rowCount !== 1 || !user1IdRes.rows[0]?.id) {
+    throw new Error(`Failed to resolve seeded user id for USER1_UUID: ${USER1_UUID}`);
+  }
   const user1Id = user1IdRes.rows[0].id;
   const user2IdRes = await testPool.query(
     `SELECT id FROM measured_judgement.users WHERE uuid = $1`, [USER2_UUID],
   );
+  if (user2IdRes.rowCount !== 1 || !user2IdRes.rows[0]?.id) {
+    throw new Error(`Failed to resolve seeded user id for USER2_UUID: ${USER2_UUID}`);
+  }
   const user2Id = user2IdRes.rows[0].id;
 
   // Reset memberships for the fixed integration-test users so prior runs or

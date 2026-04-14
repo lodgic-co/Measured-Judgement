@@ -19,6 +19,8 @@ const AUTHORITY_INSTANCE_ID = 'authority-main';
 const OG_INSTANCE_ID = 'operational-grace-main';
 const PROP1_UUID = '44444444-4444-4444-a444-444444444444';
 const UNREGISTERED_PROP_UUID = 'ffffffff-ffff-4fff-afff-ffffffffffff';
+/** Organisation UUID used when asserting cross-tenant / wrong-org behaviour (not ORG_UUID). */
+const OTHER_ORG_UUID = 'bbbbbbbb-cccc-dddd-eeee-ffffffffffff';
 
 let app: FastifyInstance;
 let request: supertest.SuperTest<supertest.Test>;
@@ -195,8 +197,14 @@ async function seedTestData(): Promise<void> {
 }
 
 function expectEnvelope(body: unknown, expectedStatus: number, expectedCode: string): void {
+  expect(body).not.toBeNull();
+  expect(typeof body).toBe('object');
+
   const b = body as Record<string, unknown>;
-  expect(b).toHaveProperty('error');
+  expect('error' in b).toBe(true);
+  expect(b.error).not.toBeNull();
+  expect(typeof b.error).toBe('object');
+
   const err = b.error as Record<string, unknown>;
   expect(err.status).toBe(expectedStatus);
   expect(err.code).toBe(expectedCode);
@@ -643,8 +651,6 @@ describe('measured-judgement endpoint integration tests', () => {
   });
 
   describe('GET /properties/validate-scope', () => {
-    const OTHER_ORG_UUID = 'bbbbbbbb-cccc-dddd-eeee-ffffffffffff';
-
     it('returns 200 with property_uuid and organisation_uuid when property belongs to organisation', async () => {
       const res = await request
         .get(`/properties/validate-scope?property_uuid=${PROP1_UUID}&organisation_uuid=${ORG_UUID}`)
@@ -714,7 +720,6 @@ describe('measured-judgement endpoint integration tests', () => {
 
   describe('cross-tenancy isolation on permissions', () => {
     it('returns allowed:false when checking a different org the user is not in', async () => {
-      const otherOrgUuid = 'bbbbbbbb-cccc-dddd-eeee-ffffffffffff';
       const res = await request
         .post('/permissions/check')
         .set('Authorization', AUTH_HEADER)
@@ -722,7 +727,7 @@ describe('measured-judgement endpoint integration tests', () => {
         .set('X-Actor-Type', 'user')
         .send({
           actor_user_uuid: USER1_UUID,
-          organisation_uuid: otherOrgUuid,
+          organisation_uuid: OTHER_ORG_UUID,
           permission_key: 'organisation.properties.read',
         });
       expect(res.status).toBe(200);

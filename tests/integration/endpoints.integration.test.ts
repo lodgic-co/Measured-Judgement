@@ -129,6 +129,11 @@ async function seedTestData(): Promise<void> {
     `SELECT id FROM measured_judgement.user_organisations WHERE organisation_uuid = $1 AND user_id = $2`,
     [ORG_UUID, user1Id],
   );
+  if (uo1IdRes.rows.length === 0) {
+    throw new Error(
+      `Test setup failed: no user_organisations row found for organisation_uuid=${ORG_UUID} and user_id=${user1Id}`,
+    );
+  }
   const uo1Id = uo1IdRes.rows[0].id;
 
   await testPool.query(`

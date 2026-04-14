@@ -55,10 +55,16 @@ async function seedTestData(): Promise<void> {
   const user1IdRes = await testPool.query(
     `SELECT id FROM measured_judgement.users WHERE uuid = $1`, [USER1_UUID],
   );
+  if (user1IdRes.rowCount !== 1 || !user1IdRes.rows[0]?.id) {
+    throw new Error(`Failed to resolve seeded user id for USER1_UUID: ${USER1_UUID}`);
+  }
   const user1Id = user1IdRes.rows[0].id;
   const user2IdRes = await testPool.query(
     `SELECT id FROM measured_judgement.users WHERE uuid = $1`, [USER2_UUID],
   );
+  if (user2IdRes.rowCount !== 1 || !user2IdRes.rows[0]?.id) {
+    throw new Error(`Failed to resolve seeded user id for USER2_UUID: ${USER2_UUID}`);
+  }
   const user2Id = user2IdRes.rows[0].id;
 
   // Reset memberships for the fixed integration-test users so prior runs or
@@ -111,6 +117,9 @@ async function seedTestData(): Promise<void> {
     `SELECT id FROM measured_judgement.roles WHERE organisation_uuid = $1 AND name = 'Org Admin'`,
     [ORG_UUID],
   );
+  if (roleIdRes.rows.length === 0) {
+    throw new Error('Test setup failed: Org Admin role was not found for organisation.');
+  }
   const roleId = roleIdRes.rows[0].id;
 
   await testPool.query(`
@@ -129,6 +138,11 @@ async function seedTestData(): Promise<void> {
     `SELECT id FROM measured_judgement.user_organisations WHERE organisation_uuid = $1 AND user_id = $2`,
     [ORG_UUID, user1Id],
   );
+  if (uo1IdRes.rows.length === 0) {
+    throw new Error(
+      `Test setup failed: no user_organisations row found for organisation_uuid=${ORG_UUID} and user_id=${user1Id}`,
+    );
+  }
   const uo1Id = uo1IdRes.rows[0].id;
 
   await testPool.query(`

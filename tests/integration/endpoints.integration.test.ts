@@ -35,13 +35,8 @@ async function resetSeedMemberships(pool: pg.Pool, userIds: number[]): Promise<v
   );
 }
 
-async function seedTestData(): Promise<void> {
-  const dbUrl = process.env['DATABASE_URL'];
-  if (!dbUrl) throw new Error('DATABASE_URL is required for integration tests');
-
-  testPool = new pg.Pool({ connectionString: dbUrl });
-
-  await testPool.query(`
+async function seedUsers(pool: pg.Pool): Promise<void> {
+  await pool.query(`
     INSERT INTO measured_judgement.users (uuid, email, name, preferred_language, preferred_locale, preferred_timezone)
     VALUES
       ($1, 'happy@example.com', 'Happy User', 'en', 'en-AU', 'Australia/Sydney'),
@@ -53,6 +48,15 @@ async function seedTestData(): Promise<void> {
       preferred_locale = EXCLUDED.preferred_locale,
       preferred_timezone = EXCLUDED.preferred_timezone
   `, [USER1_UUID, USER2_UUID, OUTSIDER_UUID]);
+}
+
+async function seedTestData(): Promise<void> {
+  const dbUrl = process.env['DATABASE_URL'];
+  if (!dbUrl) throw new Error('DATABASE_URL is required for integration tests');
+
+  testPool = new pg.Pool({ connectionString: dbUrl });
+
+  await seedUsers(testPool);
 
   const user1IdRes = await testPool.query(
     `SELECT id FROM measured_judgement.users WHERE uuid = $1`, [USER1_UUID],

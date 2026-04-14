@@ -195,8 +195,14 @@ async function seedTestData(): Promise<void> {
 }
 
 function expectEnvelope(body: unknown, expectedStatus: number, expectedCode: string): void {
+  expect(body).not.toBeNull();
+  expect(typeof body).toBe('object');
+
   const b = body as Record<string, unknown>;
-  expect(b).toHaveProperty('error');
+  expect('error' in b).toBe(true);
+  expect(b.error).not.toBeNull();
+  expect(typeof b.error).toBe('object');
+
   const err = b.error as Record<string, unknown>;
   expect(err.status).toBe(expectedStatus);
   expect(err.code).toBe(expectedCode);

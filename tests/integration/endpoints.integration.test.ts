@@ -251,7 +251,7 @@ describe('measured-judgement endpoint integration tests', () => {
     const { createApp } = await import('../../src/http/app.js');
     app = createApp();
     await app.ready();
-    request = supertest(app.server) as unknown as supertest.SuperTest<supertest.Test>;
+    request = supertest(app.server);
   }, 30_000);
 
   afterAll(async () => {
